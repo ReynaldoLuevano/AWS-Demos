@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 600">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a150a" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#0a0a15" stop-opacity="0.98"/>
+    </linearGradient>
+  </defs>
+  <rect width="1400" height="600" fill="url(#g)"/>
+  <text x="700" y="280" text-anchor="middle" font-family="Arial" font-size="36" fill="rgba(255,255,255,0.12)" font-weight="900">Alarmas para Chalets</text>
+  <text x="700" y="340" text-anchor="middle" font-family="Arial" font-size="18" fill="rgba(255,255,255,0.08)">securitasdirect.es</text>
+</svg>
