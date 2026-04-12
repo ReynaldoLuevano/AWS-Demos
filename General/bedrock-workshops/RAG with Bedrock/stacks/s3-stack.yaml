@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Stack S3 - Crea el bucket de datos para el workshop de Bedrock.
+
+Parameters:
+  BucketSuffix:
+    Type: String
+    Description: Sufijo unico para el nombre del bucket (ej. un ID aleatorio o el account ID)
+    Default: workshop
+
+Resources:
+
+  # ── Bucket principal de datos ──────────────────────────────────────────────
+  WorkshopDataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'itera-bedrock-workshop-data-${BucketSuffix}'
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # ── Bucket challenge  ──────────────────────────────────────────────
+  ChallengeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'itera-bedrock-workshop-challenge-${BucketSuffix}'
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+Outputs:
+  BucketName:
+    Description: Nombre del bucket S3 creado
+    Value: !Ref WorkshopDataBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-BucketName'
+
+  BucketArn:
+    Description: ARN del bucket S3 creado
+    Value: !GetAtt WorkshopDataBucket.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-BucketArn'

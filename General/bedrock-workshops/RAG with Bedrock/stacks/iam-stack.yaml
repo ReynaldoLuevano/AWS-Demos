@@ -1,0 +1,329 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Stack IAM - Crea el usuario "developer", la política "developerPermissions"
+  y la adjunta al usuario mediante un grupo IAM auxiliar.
+
+Parameters:
+  DataBucketArn:
+    Type: String
+    Description: ARN del bucket S3 de datos importado desde el stack de S3
+
+Resources:
+
+  # ── 1. Usuario IAM "developer" ─────────────────────────────────────────────
+  DeveloperUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: developer
+
+  # ── 2. Política IAM "developerPermissions" ─────────────────────────────────
+  DeveloperPermissionsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: developerPermissions
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+
+          # ── 3.1  Lectura total sobre OpenSearch Serverless ─────────────────
+          - Sid: OpenSearchReadAll
+            Effect: Allow
+            Action:
+              - aoss:BatchGetCollection
+              - aoss:BatchGetLifecyclePolicy
+              - aoss:BatchGetVpcEndpoint
+              - aoss:GetAccessPolicy
+              - aoss:GetAccountSettings
+              - aoss:GetPoliciesStats
+              - aoss:GetIndex
+              - aoss:GetSecurityConfig
+              - aoss:GetSecurityPolicy
+              - aoss:ListAccessPolicies
+              - aoss:ListCollections
+              - aoss:CreateAccessPolicy
+              - aoss:ListLifecyclePolicies
+              - aoss:ListSecurityConfigs
+              - aoss:ListSecurityPolicies
+              - aoss:ListTagsForResource
+              - aoss:ListVpcEndpoints
+              - aoss:DeleteCollection
+              - aoss:APIAccessAll
+              - es:DescribeElasticsearchDomains
+              - es:DescribeElasticsearchDomain
+              - es:DescribeElasticsearchDomainConfig
+              - es:ListDomainNames
+              - es:ListTags
+              - es:GetCompatibleElasticsearchVersions
+              - es:ESHttpGet
+              - es:ESHttpHead
+            Resource: '*'
+
+          # ── 3.2  Lectura total sobre S3 ───────────────────────────────────
+          - Sid: S3ReadAll
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:GetObjectTagging
+              - s3:GetObjectVersionTagging
+              - s3:GetObjectAcl
+              - s3:GetBucketAcl
+              - s3:GetBucketCORS
+              - s3:GetBucketLocation
+              - s3:GetBucketLogging
+              - s3:GetBucketNotification
+              - s3:GetBucketObjectLockConfiguration
+              - s3:GetBucketOwnershipControls
+              - s3:GetBucketPolicy
+              - s3:GetBucketPolicyStatus
+              - s3:GetBucketPublicAccessBlock
+              - s3:GetBucketRequestPayment
+              - s3:GetBucketTagging
+              - s3:GetBucketVersioning
+              - s3:GetBucketWebsite
+              - s3:GetEncryptionConfiguration
+              - s3:GetLifecycleConfiguration
+              - s3:GetReplicationConfiguration
+              - s3:ListAllMyBuckets
+              - s3:ListBucket
+              - s3:ListBucketMultipartUploads
+              - s3:ListBucketVersions
+              - s3:ListMultipartUploadParts
+            Resource: '*'
+
+          # ── 3.3  Escritura sobre el bucket itera-bedrock-workshop-data ────
+          - Sid: S3WriteWorkshopBucket
+            Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:PutObjectAcl
+              - s3:PutObjectTagging
+              - s3:DeleteObject
+              - s3:DeleteObjectVersion
+              - s3:AbortMultipartUpload
+              - s3:RestoreObject
+            Resource:
+              - !Sub '${DataBucketArn}'
+              - !Sub '${DataBucketArn}/*'
+
+          # ── 3.4  Operaciones Bedrock Knowledge Base ────────────────────────
+          - Sid: BedrockKnowledgeBaseOperations
+            Effect: Allow
+            Action:
+              - bedrock:CreateKnowledgeBase
+              - bedrock:UpdateKnowledgeBase
+              - bedrock:DeleteKnowledgeBase
+              - bedrock:GetKnowledgeBase
+              - bedrock:ListKnowledgeBases
+              - bedrock:AssociateAgentKnowledgeBase
+              - bedrock:DisassociateAgentKnowledgeBase
+              - bedrock:CreateDataSource
+              - bedrock:UpdateDataSource
+              - bedrock:DeleteDataSource
+              - bedrock:GetDataSource
+              - bedrock:ListDataSources
+              - bedrock:ListInferenceProfiles
+              - bedrock:StopIngestionJob
+              - bedrock:GetIngestionJob
+              - bedrock:ListIngestionJobs
+              - bedrock:Retrieve
+              - bedrock:RetrieveAndGenerate
+              - bedrock:TagResource
+              - bedrock:UntagResource
+              - bedrock:StartIngestionJob
+              - bedrock:ListKnowledgeBaseDocuments
+              - bedrock:ListMarketplaceModelEndpoints
+              - sagemaker:ListHubContents
+              - bedrock:ListGuardrails
+              - lambda:ListFunctions
+              - logs:DescribeConfigurationTemplates
+              - iam:ListRoles
+              - notifications:List*
+              - iam:GetPolicy
+              - kms:ListAliases 
+            Resource: '*'
+
+          # ── 3.5  InvokeModelWithResponseStream – Amazon Nova Lite ─────────
+          - Sid: BedrockInvokeNovaLite
+            Effect: Allow
+            Action:
+              - bedrock:InvokeModelWithResponseStream
+              - bedrock:InvokeModel
+            Resource:
+              - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-lite-v1:0'
+              - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/us.amazon.nova-lite-v1:0'
+
+          # ── 3.6  Lectura general sobre Amazon Bedrock ─────────────────────
+          - Sid: BedrockReadAll
+            Effect: Allow
+            Action:
+              - bedrock:GetFoundationModel
+              - bedrock:GetFoundationModelAvailability
+              - bedrock:GetModelInvocationLoggingConfiguration
+              - bedrock:GetUseCaseForModelAccess
+              - bedrock:ListFoundationModels
+              - bedrock:ListCustomModels
+              - bedrock:ListProvisionedModelThroughputs
+              - bedrock:ListTagsForResource
+              - bedrock:GetCustomModel
+              - bedrock:GetProvisionedModelThroughput
+            Resource: '*'
+
+          # ── Auxiliar: PassRole para Bedrock ───────────────────────────────
+          - Sid: IAMPassRoleForBedrock
+            Effect: Allow
+            Action:
+              - iam:PassRole
+            Resource: '*'
+            Condition:
+              StringEquals:
+                iam:PassedToService: bedrock.amazonaws.com
+
+  # ── 3. Grupo IAM auxiliar ──────────────────────────────────────────────────
+  DeveloperGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: DeveloperGroup
+      ManagedPolicyArns:
+        - !Ref DeveloperPermissionsPolicy
+
+  # ── 4. Adjuntar usuario al grupo (= adjuntar la política) ─────────────────
+  AddDeveloperToGroup:
+    Type: AWS::IAM::UserToGroupAddition
+    Properties:
+      GroupName: !Ref DeveloperGroup
+      Users:
+        - !Ref DeveloperUser
+
+  # -------------------------------------------------------
+  # Política 1 – Bedrock InvokeModel + Marketplace
+  # -------------------------------------------------------
+  BedrockInvokeModelPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: "AOS-BedrockInvokeModel"
+      Description: Permite invocar el modelo Titan Embed y operaciones de Marketplace desde Bedrock
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: BedrockInvokeModelStatement
+            Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+            Resource:
+              - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.titan-embed-text-v2:0"
+ 
+          - Sid: MarketplaceOperationsFromBedrockFor3pModels
+            Effect: Allow
+            Action:
+              - aws-marketplace:Subscribe
+              - aws-marketplace:ViewSubscriptions
+              - aws-marketplace:Unsubscribe
+            Resource: "*"
+            Condition:
+              StringEquals:
+                aws:CalledViaLast: bedrock.amazonaws.com
+
+ # -------------------------------------------------------
+  # Política 2 – OpenSearch Serverless API Access
+  # -------------------------------------------------------
+  OpenSearchServerlessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: "AOS-OpenSearchServerlessAccess"
+      Description: Permite acceso a la colección de OpenSearch Serverless
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: OpenSearchServerlessAPIAccessAllStatement
+            Effect: Allow
+            Action:
+              - aoss:APIAccessAll
+            Resource:
+              - !Sub "arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:collection/*"
+
+
+  # -------------------------------------------------------
+  # Política 3 – S3 ListBucket + GetObject
+  # -------------------------------------------------------
+  S3DataSourcePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: "AOS-S3DataSourceAccess"
+      Description: Permite listar y leer objetos del bucket S3 fuente de datos
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: S3ListBucketStatement
+            Effect: Allow
+            Action:
+              - s3:ListBucket
+            Resource:
+              - "*"
+            Condition:
+              StringEquals:
+                aws:ResourceAccount:
+                  - !Ref AWS::AccountId
+ 
+          - Sid: S3GetObjectStatement
+            Effect: Allow
+            Action:
+              - s3:GetObject
+            Resource:
+              - "*"
+            Condition:
+              StringEquals:
+                aws:ResourceAccount:
+                  - !Ref AWS::AccountId
+ 
+  # -------------------------------------------------------
+  # Rol IAM con Trusted Relationship hacia Bedrock
+  # -------------------------------------------------------
+  BedrockKnowledgeBaseRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: Bedrock-KB-Role
+      Description: Rol de ejecución de Amazon Bedrock Knowledge Base
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AmazonBedrockKnowledgeBaseTrustPolicy
+            Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*"
+      ManagedPolicyArns:
+        - !Ref BedrockInvokeModelPolicy
+        - !Ref OpenSearchServerlessPolicy
+        - !Ref S3DataSourcePolicy
+
+
+Outputs:
+  DeveloperUserName:
+    Description: Nombre del usuario IAM developer
+    Value: !Ref DeveloperUser
+    Export:
+      Name: !Sub '${AWS::StackName}-DeveloperUserName'
+
+  DeveloperUserArn:
+    Description: ARN del usuario IAM developer
+    Value: !GetAtt DeveloperUser.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DeveloperUserArn'
+
+  PolicyArn:
+    Description: ARN de la política developerPermissions
+    Value: !Ref DeveloperPermissionsPolicy
+    Export:
+      Name: !Sub '${AWS::StackName}-PolicyArn'
+
+  DeveloperGroupName:
+    Description: Nombre del grupo IAM
+    Value: !Ref DeveloperGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-DeveloperGroupName'

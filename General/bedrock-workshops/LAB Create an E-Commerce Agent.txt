@@ -1,0 +1,97 @@
+LAB: Create an E-Commerce Bot
+
+Tarea 1 Examina el catálogo de Productos
+Paso 1 - Abre la consola de AWS y en la barra de busqueda de servicios introduce DynamoDB. En los resultados de la búsqueda, en la sección Servicios, haz clic en DynamoDB.
+Paso 2 - En la consola de Servicio de DynamoDB, Haz clic en Tables en el menu izquierdo y a continuación haz clic en la Tabla con nombre workshop-Products-XXX
+Paso 3 - Una vez se cargue os detalles de la tabla, haz clic en Explore Table Items
+Paso 4 - Asegurate que esta seleccionada la opción Scan en el apartado Scan or query Items y a continuacióon haz clic en "Run"
+Paso 5 - En el apartado inferior podrás ver todos los elementos de la tabla Productos. Verás que cada uno de ellos tiene una categoria, una ocasión en donde se puede regalar el producto, para que género esta orientado el producto y una descripción
+
+
+Tarea 2 Examina las Lambdas
+Paso 6 - En la barra de busqueda de servicios introduce Lambda. En los resultados de la búsqueda, en la sección Servicios, haz clic en Lambda.
+Paso 7 - Verás en la pagina de Functions, que existen funciones Lamdba creadas. Cada una de ellas realiza una funcionalidad como añadir items al carrito de compra (AddToCartFunction), obtener el estado del carrito (getCartFunction), obtenerDetallesdelProducto (getProductDetails) y obtener
+Paso 8 - Si lo deseas puedes acceder a cualquiera de ellas para ver el código. Para ello haz clic en el nombre de la función y esto te llevará a la página de detalle de la función donde podrás consultar el código fuente
+
+
+Tarea 3. Creando el Agente
+Paso 9 - En el cuadro de búsqueda de la barra de navegación superior, escribe:bedrock. En los resultados de la búsqueda, en la sección Servicios, haz clic en Amazon Bedrock.
+Paso 10. En el panel de navegación izquierdo, desplácese hacia abajo hasta "Build" y haga clic en "Agents".
+Paso 11. Haga clic en "Create Agent"
+Paso 12. En la ventana emergente coloque como nombre de agente "e-commerce-agent" y coloque la siguiente descripción "Product recommendations agent" y haz clic en "Create"
+Paso 13. Aparece la vista "Agent Builder", donde configuraremos el modelo. 
+Paso 14. En el apartado "Agent Resource Role", selecciona "Use an existing service Role" y del desplegable selecciona el unico valor disponible "workshop-Role"
+Paso 15. Haz clic en Select  Model
+Paso 16. En la ventana emergente desmarca el check "Bedrock Agents Optimized"
+Paso 17. Selecciona Anthropic Claude Haiku. Asegurate que en el apartado Inference esta selecionado US Anthropic Claude Haiku 4.5 y haz clic en Apply
+Paso 18. En el apartado Instructions for Agent, completa con lo siguiente:
+"You are a Product recommendations agent for gift products, the user is trying to buy a gift for someone and you are trying to help identify the best products based on the filters in the action groups, ask questions to identify at least one of the input filters, gender, category or ocassion. Do not recommend any products that are not retrieved from the products API. Do not ask about the gender if it is obvious from the user input already. Always start by getting the full list of products from the API so you can know the proper filter values to be used in the API parameters. Always use a single value for each filter field, and adthere to the filtration values based on the first API call. And never tell the user about the API and its details"
+Este  conjunto de instrucciones son importantes ya que guian al Agente en como comunicarse con el Usuario y en como utilizar las API
+Paso 19. Haz clic en Additional Settings y en el apartado "User Input" selecciona la opcion Enabled
+Paso 20. Importante. Haz clic en Save ubicado en la parte superior antes de continuar con el siguiente paso
+Paso 21. En el apartado Action Groups, haz clic en "Add" para añadir un Action Group que permitira al Agente invokar a la Lambda Function. 
+Paos 22. En el Action Group name coloca "get product recommendations" y selecciona Define with API Schemas.
+Paso 23. En el apartado Action Group Invocation, selecciona "Select an existing Lambda Function" y en el desplegable selecciona la lambda que tiene el nombre workshop-GetProductDetailsFunction
+Paso 24. En el apartado Action Group Schema, selecciona "Define via in-line schema editor"
+Paso 25. Borra el contenido de la seccion In-line OpenAPI Schema y copia/pega el siguiente Schema:
+Paso 26. Haz clic en Save
+Paso 27. Haz clic en Prepare
+
+Tarea 3. Prueba el Agente
+Paso 28. En la misma pantalla, Haz clic en Test. En la parte derecha se despliega el Chat para probar al Agente
+Paso 29. Introduce el siguiente texto "Quiero comprar un regalo" y haz click en Run. 
+Paso 30. El agente te contestará. Introduce el siguiente texto "Es para mi hermana". 
+Paso 31. El agente te contestará. Introduce el siguiente texto "Es para su cumpleaños". 
+Paso 32. El agente te contestará con varias opciones. Estas opciones se han recuperado de la tabla de DynamoDB. Haz clic en Show Traces y se despliega del lado derecho una sección para ver las trazas.
+Paso 33. Haz clic en la pestaña "Orchestration and Knowledge Base". Ve el detalle de cada traza. En una de ellas podrás ver que realiza la llamada a la API para obtener los productos.
+
+
+Tarea 4. Añade más funcionalidades al Agente
+Paso 34. Vamos a editar al Agente. En el panel de navegación izquierdo, desplácese hacia abajo hasta "Build" y haga clic en "Agents".
+Paso 35. En el apartado Agents. Haz clic en el agente e-commerce-agent
+Paso 36. En el apartado de Instructions. Añade el siguiente texto a las instrucciones al final de las instrucciones existentes.
+
+"After recommending products ask the user if they want to add any products to the cart, then use the add to cart API, ask the user about his email and use it as the user id also use it along the whole conversation and in any cart API calls, reply to the user with the userId after first cart addition to be used in later additions." 
+
+Paso 37. Importante. Haz clic en Save ubicado en la parte superior antes de continuar con el siguiente paso
+Paso 38. En el apartado Action Groups, haz clic en "Add" para añadir un Action Group que permitira al Agente invokar a la Lambda Function. 
+
+Paos 39. En el Action Group name coloca "add to cart" y selecciona Define with API Schemas.
+Paso 40. En el apartado Action Group Invocation, selecciona "Select an existing Lambda Function" y en el desplegable selecciona la lambda que tiene el nombre workshop-AddToCartFunction
+Paso 41. En el apartado Action Group Schema, selecciona "Define via in-line schema editor"
+Paso 42. Borra el contenido de la seccion In-line OpenAPI Schema y copia/pega el siguiente Schema:
+Paso 43. Haz clic en Save
+Paso 44. Haz clic en Prepare
+
+Paso 45. En la misma pantalla, Haz clic en Test. En la parte derecha se despliega el Chat para probar al Agente
+Paso 46. Introduce el siguiente texto "Quiero comprar un regalo para el cumpleaños de mi madre" y haz click en Run. 
+Paso 47. El agente te contestará con varias opciones. Introduce el siguiente texto "Selecciono el ..". y haz click en Run. 
+Paso 48. El agente te preguntará si deseas añadirlo al carrito. Introduce el siguiente texto "Si". y haz click en Run. 
+Paso 49. Verás que el agente ha añadido el carrito. Para comprobarlo,en la barra de busqueda de servicios introduce DynamoDB. En los resultados de la búsqueda, en la sección Servicios, haz clic en DynamoDB.
+Paso 50 - En la consola de Servicio de DynamoDB, Haz clic en Tables en el menu izquierdo y a continuación haz clic en la Tabla con nombre workshop-Cart-XXX
+Paso 51 - Una vez se cargue os detalles de la tabla, haz clic en Explore Table Items
+Paso 52 - Asegurate que esta seleccionada la opción Scan en el apartado Scan or query Items y a continuacióon haz clic en "Run"
+Paso 53 - En el apartado inferior podrás ver todos los elementos de la tabla donde estará el carrito con el pedido que incluye el regalo.
+
+
+Challenge. Completa las funcionalidades al Agente
+
+Nuestro Agente esta incompleto, es necesario que si el usuario pregunta "¿Qué tengo en el carrito?" el agente pueda responder.
+Para ello, realiza las siguientes tareas.
+
+Paso 54. Modifica las instrucciones del Agente para que sepa que puede regresar el estado del carrito si el usuario lo pregunta
+Paso 55. Utiliza la función Lambda workshop-getCartFunction para obtener el estado del carrito
+Paso 56. Si has realizado todos los cambios necesarios. Prueba el agente con el siguiente dialogo:
+Usuario: Quiero un regalo para el cumpleaños de mi padre.
+Agente: Tengo estas opciones
+Usuario: OK, me quedo con la primera opcion, añadela al carrito
+Agente: Añadida al carrito
+Usuario: Ahora quiero un regalo para el cumpleaños de mi abuela.
+Usuario: OK, me quedo con la primera opcion, añadela al carrito
+Agente: Añadida al carrito
+Usuario: Muestrame que tengo en el carrito
+Agente: Este es el contenido del carrito
+
+
+Conclusiones
+En este laboratorio, has aprendido a crear un Agent en Amazon Bedrock

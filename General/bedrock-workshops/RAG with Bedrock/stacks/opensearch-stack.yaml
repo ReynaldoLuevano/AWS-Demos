@@ -1,0 +1,371 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Stack OpenSearch Serverless - Crea la colección "bedrock-knowledge-base"
+  y el índice vectorial "bedrock-knowledge-base-index" con su campo vector
+  y los metadatos requeridos por Bedrock.
+
+Parameters:
+  DeveloperUserArn:
+    Type: String
+    Description: ARN del usuario IAM developer (para las políticas de acceso de AOSS)
+
+Resources:
+
+  # ── 1. Política de cifrado ──────────────────────────────────────────────────
+  EncryptionPolicy:
+    Type: AWS::OpenSearchServerless::SecurityPolicy
+    Properties:
+      Name: bedrock-kb-encryption
+      Type: encryption
+      Description: Política de cifrado SSE para la colección bedrock-knowledge-base
+      Policy: |
+        {
+          "Rules": [
+            {
+              "ResourceType": "collection",
+              "Resource": ["collection/bedrock-knowledge-base"]
+            }
+          ],
+          "AWSOwnedKey": true
+        }
+
+  # ── 2. Política de red (acceso público a la API y al dashboard) ────────────
+  NetworkPolicy:
+    Type: AWS::OpenSearchServerless::SecurityPolicy
+    Properties:
+      Name: bedrock-kb-network
+      Type: network
+      Description: Política de red para la colección bedrock-knowledge-base
+      Policy: |
+        [
+          {
+            "Rules": [
+              {
+                "ResourceType": "collection",
+                "Resource": ["collection/bedrock-knowledge-base"]
+              },
+              {
+                "ResourceType": "dashboard",
+                "Resource": ["collection/bedrock-knowledge-base"]
+              }
+            ],
+            "AllowFromPublic": true
+          }
+        ]
+
+  # ── 3. Colección OpenSearch Serverless ─────────────────────────────────────
+  BedrockKnowledgeBaseCollection:
+    Type: AWS::OpenSearchServerless::Collection
+    DependsOn:
+      - EncryptionPolicy
+      - NetworkPolicy
+    Properties:
+      Name: bedrock-knowledge-base
+      Type: VECTORSEARCH
+      Description: Colección vectorial para la Knowledge Base de Amazon Bedrock
+      Tags:
+        - Key: Project
+          Value: IteraBedrockWorkshop
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # ── 4. Política de acceso a datos ──────────────────────────────────────────
+  #    Necesaria para que el usuario developer y el servicio Bedrock puedan
+  #    crear/leer/escribir índices y documentos en la colección.
+  DataAccessPolicy:
+    Type: AWS::OpenSearchServerless::AccessPolicy
+    DependsOn: BedrockKnowledgeBaseCollection
+    Properties:
+      Name: bedrock-kb-access
+      Type: data
+      Description: Política de acceso a datos para la colección bedrock-knowledge-base
+      Policy: !Sub |
+        [
+          {
+            "Description": "Acceso completo para el usuario developer y Bedrock",
+            "Rules": [
+              {
+                "ResourceType": "index",
+                "Resource": [
+                  "index/bedrock-knowledge-base/*"                
+                  ],
+                "Permission": [
+                  "aoss:CreateIndex",
+                  "aoss:UpdateIndex",
+                  "aoss:DescribeIndex",
+                  "aoss:ReadDocument",
+                  "aoss:WriteDocument"
+                ]
+              },
+              {
+                "ResourceType": "collection",
+                "Resource": ["collection/bedrock-knowledge-base"],
+                "Permission": [
+                  "aoss:CreateCollectionItems",
+                  "aoss:UpdateCollectionItems",
+                  "aoss:DescribeCollectionItems"
+                ]
+              }
+            ],
+            "Principal": [
+              "${DeveloperUserArn}",
+              "arn:aws:iam::${AWS::AccountId}:root"
+            ]
+          }
+        ]
+
+  # ── 5. Rol de ejecución para la Custom Resource (creación del índice) ───────
+  IndexCreatorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'BedrockKBIndexCreatorRole-${AWS::StackName}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: AOSSIndexAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - aoss:APIAccessAll
+                  - aoss:DashboardsAccessAll 
+                  - aoss:CreateIndex
+                  - aoss:UpdateIndex
+                  - aoss:GetIndex
+                Resource: '*'
+
+  # ── 6. Política de acceso adicional para el rol Lambda ──────────────────────
+  IndexCreatorAccessPolicy:
+    Type: AWS::OpenSearchServerless::AccessPolicy
+    DependsOn: BedrockKnowledgeBaseCollection
+    Properties:
+      Name: bedrock-kb-lambda-access
+      Type: data
+      Description: Permite al rol Lambda crear el índice vectorial
+      Policy: !Sub |
+        [
+          {
+            "Description": "Acceso Lambda para crear el índice",
+            "Rules": [
+              {
+                "ResourceType": "index",
+                "Resource": [
+                  "index/bedrock-knowledge-base/*"
+                ],
+                "Permission": [
+                  "aoss:CreateIndex",
+                  "aoss:UpdateIndex",
+                  "aoss:DeleteIndex",
+                  "aoss:ReadDocument",
+                  "aoss:WriteDocument"
+                ]
+              },
+              {
+                "ResourceType": "collection",
+                "Resource": ["collection/bedrock-knowledge-base"],
+                "Permission": [
+                  "aoss:CreateCollectionItems",
+                  "aoss:UpdateCollectionItems",
+                  "aoss:DeleteCollectionItems",
+                  "aoss:DescribeCollectionItems"
+                ]
+              }
+            ],
+            "Principal": [
+              "arn:aws:iam::${AWS::AccountId}:role/BedrockKBIndexCreatorRole-${AWS::StackName}"
+            ]
+          }
+        ]
+
+  # ── 7. Lambda Custom Resource – crea el índice vectorial ───────────────────
+  #    CloudFormation no tiene un recurso nativo para índices AOSS,
+  #    por lo que usamos una función Lambda en línea (Python 3.12).
+  IndexCreatorFunction:
+    Type: AWS::Lambda::Function
+
+    Properties:
+      FunctionName: !Sub 'BedrockKBIndexCreator-${AWS::StackName}'
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt IndexCreatorRole.Arn
+      Timeout: 300
+      Environment:
+        Variables:
+          COLLECTION_ENDPOINT: !GetAtt BedrockKnowledgeBaseCollection.CollectionEndpoint
+          REGION: !Ref AWS::Region
+      Code:
+        ZipFile: |
+          import json
+          import hashlib
+          import os
+          import time
+          import urllib.request
+          import urllib.error
+          import boto3
+          from botocore.auth import SigV4Auth
+          from botocore.awsrequest import AWSRequest
+          from botocore.credentials import get_credentials
+
+          INDEX_NAME   = "bedrock-knowledge-base-index"
+          VECTOR_FIELD = "bedrock-knowledge-base-default-vector"
+          VECTOR_DIM   = 1024   # Titan Text Embeddings V2 default
+
+          INDEX_BODY = {
+            "settings": {
+              "index": {
+                "knn": True,
+                "knn.algo_param.ef_search": 512
+              }
+            },
+            "mappings": {
+              "properties": {
+                VECTOR_FIELD: {
+                  "type": "knn_vector",
+                  "dimension": VECTOR_DIM,
+                  "method": {
+                    "name": "hnsw",
+                    "engine": "faiss",
+                    "space_type": "l2",
+                    "parameters": {
+                      "ef_construction": 512,
+                      "m": 16
+                    }
+                  }
+                },
+                "id": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {"type": "keyword"}
+                  }
+                },
+                "AMAZON_BEDROCK_METADATA": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {"type": "keyword"}
+                  }
+                },
+                "AMAZON_BEDROCK_TEXT_CHUNK": {
+                  "type": "text",
+                  "index": True
+                }
+              }
+            }
+          }
+
+          def send_cfn_response(event, context, status, reason="", data=None):
+              body = json.dumps({
+                  "Status": status,
+                  "Reason": reason,
+                  "PhysicalResourceId": event.get("PhysicalResourceId", context.log_stream_name),
+                  "StackId": event["StackId"],
+                  "RequestId": event["RequestId"],
+                  "LogicalResourceId": event["LogicalResourceId"],
+                  "Data": data or {}
+              }).encode("utf-8")
+              req = urllib.request.Request(
+                  url=event["ResponseURL"],
+                  data=body,
+                  method="PUT",
+                  headers={"Content-Type": ""}
+              )
+              urllib.request.urlopen(req)
+
+          def signed_request(method, url, body=None, region=None):
+              session = boto3.session.Session()
+              creds   = session.get_credentials().get_frozen_credentials()
+              data    = json.dumps(body).encode("utf-8") if body else b""
+              payload_hash = hashlib.sha256(data).hexdigest()
+              headers = {
+                "Content-Type": "application/json",
+                "X-Amz-Content-Sha256": payload_hash
+              }
+              aws_req = AWSRequest(method=method, url=url,
+                                   data=data, headers=headers)
+              SigV4Auth(creds, "aoss", region).add_auth(aws_req)
+              req = urllib.request.Request(
+                  url=url,
+                  data=data,
+                  method=method,
+                  headers=dict(aws_req.headers)
+              )
+              try:
+                  with urllib.request.urlopen(req) as resp:
+                      return resp.status, json.loads(resp.read())
+              except urllib.error.HTTPError as e:
+                  return e.code, json.loads(e.read())
+
+          def handler(event, context):
+              print("Event:", json.dumps(event))
+              endpoint = os.environ["COLLECTION_ENDPOINT"].rstrip("/")
+              region   = os.environ["REGION"]
+              url      = f"{endpoint}/{INDEX_NAME}"
+
+              if event["RequestType"] in ("Create", "Update"):
+                  # Espera a que la colección esté activa (máx. 5 min)
+                  for _ in range(30):
+                      status, body = signed_request("GET", url, region=region)
+                      print(f"HEAD {url} → {status}")
+                      if status == 200:
+                          send_cfn_response(event, context, "SUCCESS",
+                                            data={"IndexName": INDEX_NAME})
+                          return
+                      if status == 404:
+                          break
+                      time.sleep(10)
+                  # Crear el índice
+                  status, body = signed_request("PUT", url, INDEX_BODY, region)
+                  print(f"PUT {url} → {status}: {body}")
+                  if status in (200, 201):
+                      send_cfn_response(event, context, "SUCCESS",
+                                        data={"IndexName": INDEX_NAME})
+                  else:
+                      send_cfn_response(event, context, "FAILED",
+                                        reason=f"Error creando índice: {status} – {body}")
+
+              elif event["RequestType"] == "Delete":
+                  status, body = signed_request("DELETE", url, region=region)
+                  print(f"DELETE {url} → {status}: {body}")
+                  send_cfn_response(event, context, "SUCCESS")
+
+  # ── 8. Custom Resource – invoca la Lambda para crear el índice ─────────────
+  VectorIndex:
+    Type: Custom::OpenSearchIndex
+
+    Properties:
+      ServiceToken: !GetAtt IndexCreatorFunction.Arn
+      CollectionEndpoint: !GetAtt BedrockKnowledgeBaseCollection.CollectionEndpoint
+      IndexName: bedrock-knowledge-base-index
+      VectorField: bedrock-knowledge-base-default-vector
+
+Outputs:
+  CollectionId:
+    Description: ID de la colección OpenSearch Serverless
+    Value: !Ref BedrockKnowledgeBaseCollection
+    Export:
+      Name: !Sub '${AWS::StackName}-CollectionId'
+
+  CollectionArn:
+    Description: ARN de la colección OpenSearch Serverless
+    Value: !GetAtt BedrockKnowledgeBaseCollection.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-CollectionArn'
+
+  CollectionEndpoint:
+    Description: Endpoint de la colección OpenSearch Serverless
+    Value: !GetAtt BedrockKnowledgeBaseCollection.CollectionEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-CollectionEndpoint'
+
+  IndexName:
+    Description: Nombre del índice vectorial creado
+    Value: bedrock-knowledge-base-index
+    Export:
+      Name: !Sub '${AWS::StackName}-IndexName'

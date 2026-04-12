@@ -1,0 +1,142 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Stack Raíz (Nested Stack) - Itera Bedrock Workshop.
+  Orquesta la creación de los stacks hijos de S3, IAM y OpenSearch Serverless.
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  PARÁMETROS
+# ─────────────────────────────────────────────────────────────────────────────
+Parameters:
+
+  # Sufijo único para el bucket (usa el Account ID por defecto con !Sub en Default)
+  BucketSuffix:
+    Type: String
+    Description: >
+      Sufijo que se añade al nombre del bucket S3.
+      El nombre final será: itera-bedrock-workshop-data-<BucketSuffix>.
+      Usa únicamente letras minúsculas, números y guiones.
+    AllowedPattern: '[a-z0-9\-]+'
+    ConstraintDescription: Solo letras minúsculas, números y guiones.
+    Default: workshop
+
+  # URL base de S3 donde se alojan las plantillas hijas.
+  # Ejemplo: https://mi-bucket.s3.amazonaws.com/cfn-templates
+  # Las plantillas deben subirse a S3 antes de lanzar este stack.
+  TemplateBaseUrl:
+    Type: String
+    Description: >
+      URL base (sin barra final) del bucket S3 donde se encuentran
+      las plantillas hijas (s3-stack.yaml, iam-stack.yaml, opensearch-stack.yaml).
+      Ejemplo: https://mi-bucket.s3.amazonaws.com/cfn-templates
+    AllowedPattern: 'https?://.+'
+    ConstraintDescription: Debe ser una URL HTTP/HTTPS válida.
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  METADATOS – Agrupación visual en la consola de CloudFormation
+# ─────────────────────────────────────────────────────────────────────────────
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: '🗂  Configuración General'
+        Parameters:
+          - TemplateBaseUrl
+      - Label:
+          default: '🪣  Amazon S3'
+        Parameters:
+          - BucketSuffix
+    ParameterLabels:
+      TemplateBaseUrl:
+        default: 'URL base de las plantillas hijas en S3'
+      BucketSuffix:
+        default: 'Sufijo del bucket de datos'
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  RECURSOS – Stacks hijos
+# ─────────────────────────────────────────────────────────────────────────────
+Resources:
+
+  # ── Stack 1: S3 ─────────────────────────────────────────────────────────────
+  S3Stack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseUrl}/s3-stack.yaml'
+      TimeoutInMinutes: 15
+      Parameters:
+        BucketSuffix: !Ref BucketSuffix
+      Tags:
+        - Key: Project
+          Value: IteraBedrockWorkshop
+        - Key: ChildStack
+          Value: S3
+
+  # ── Stack 2: IAM ────────────────────────────────────────────────────────────
+  #    Depende de S3Stack para obtener el ARN del bucket
+  IAMStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseUrl}/iam-stack.yaml'
+      TimeoutInMinutes: 15
+      Parameters:
+        DataBucketArn: !GetAtt S3Stack.Outputs.BucketArn
+      Tags:
+        - Key: Project
+          Value: IteraBedrockWorkshop
+        - Key: ChildStack
+          Value: IAM
+
+  # ── Stack 3: OpenSearch Serverless ──────────────────────────────────────────
+  #    Depende de IAMStack para obtener el ARN del usuario developer
+  #    (necesario en la política de acceso a datos de AOSS)
+  OpenSearchStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseUrl}/opensearch-stack.yaml'
+      TimeoutInMinutes: 60   # La colección AOSS puede tardar hasta 10-15 min
+      Parameters:
+        DeveloperUserArn: !GetAtt IAMStack.Outputs.DeveloperUserArn
+      Tags:
+        - Key: Project
+          Value: IteraBedrockWorkshop
+        - Key: ChildStack
+          Value: OpenSearch
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  OUTPUTS – Resumen de los recursos creados
+# ─────────────────────────────────────────────────────────────────────────────
+Outputs:
+
+  # ── S3 ──────────────────────────────────────────────────────────────────────
+  DataBucketName:
+    Description: Nombre del bucket S3 de datos
+    Value: !GetAtt S3Stack.Outputs.BucketName
+
+  DataBucketArn:
+    Description: ARN del bucket S3 de datos
+    Value: !GetAtt S3Stack.Outputs.BucketArn
+
+  # ── IAM ─────────────────────────────────────────────────────────────────────
+  DeveloperUserName:
+    Description: Nombre del usuario IAM developer
+    Value: !GetAtt IAMStack.Outputs.DeveloperUserName
+
+  DeveloperUserArn:
+    Description: ARN del usuario IAM developer
+    Value: !GetAtt IAMStack.Outputs.DeveloperUserArn
+
+  DeveloperPolicyArn:
+    Description: ARN de la política IAM developerPermissions
+    Value: !GetAtt IAMStack.Outputs.PolicyArn
+
+  # ── OpenSearch ───────────────────────────────────────────────────────────────
+  OpenSearchCollectionArn:
+    Description: ARN de la colección OpenSearch Serverless
+    Value: !GetAtt OpenSearchStack.Outputs.CollectionArn
+
+  OpenSearchCollectionEndpoint:
+    Description: Endpoint de la colección OpenSearch Serverless
+    Value: !GetAtt OpenSearchStack.Outputs.CollectionEndpoint
+
+  OpenSearchIndexName:
+    Description: Nombre del índice vectorial
+    Value: !GetAtt OpenSearchStack.Outputs.IndexName

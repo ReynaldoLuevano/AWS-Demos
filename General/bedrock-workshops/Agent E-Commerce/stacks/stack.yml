@@ -1,0 +1,905 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Create a DynamoDB table for products and a Lambda function to
+  retrieve product details, and a Lambda function to populate sample products
+  data
+
+Resources:
+  # ── 1. Usuario IAM "developer" ─────────────────────────────────────────────
+  DeveloperUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: developer
+
+  # ── 2. Política IAM "developerPermissions" ─────────────────────────────────
+  DeveloperPermissionsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: developerPermissions
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+
+          # ── 2.1  Permisos de DynamoDB ───────────────────────────────────
+          - Sid: DynamoDBPermissions
+            Effect: Allow
+            Action:
+              - dynamodb:List*
+              - dynamodb:Get*
+              - dynamodb:Describe*
+              - dynamodb:Scan
+              - dynamodb:Query
+              - application-autoscaling:DescribeScalingPolicies
+            Resource: '*'
+ 
+          # ── 2.2  Operaciones Bedrock Knowledge Base ────────────────────────
+          - Sid: BedrockKnowledgeBaseOperations
+            Effect: Allow
+            Action:
+              - bedrock:GetKnowledgeBase
+              - bedrock:ListKnowledgeBases
+              - bedrock:ListAgents
+              - bedrock:CreateAgent
+              - bedrock:CreateAgentActionGroup
+              - bedrock:UpdateAgent
+              - bedrock:GetInferenceProfile
+              - bedrock:GetDataSource
+              - bedrock:ListDataSources
+              - bedrock:ListInferenceProfiles
+              - bedrock:GetIngestionJob
+              - bedrock:ListIngestionJobs
+              - bedrock:Retrieve
+              - bedrock:PrepareAgent
+              - bedrock:InvokeAgent 
+              - bedrock:DeleteAgentActionGroup
+              - bedrock:RetrieveAndGenerate
+              - bedrock:TagResource
+              - bedrock:UntagResource
+              - bedrock:StartIngestionJob
+              - bedrock:ListKnowledgeBaseDocuments
+              - bedrock:ListMarketplaceModelEndpoints
+              - sagemaker:ListHubContents
+              - bedrock:ListGuardrails
+            Resource: '*'
+          
+          # ── 2.3  Operaciones con Lambda ────────────────────────
+          - Sid: LambdaPermission
+            Effect: Allow
+            Action:
+              - lambda:ListFunctions
+              - lambda:GetFunctionConfiguration
+              - lambda:GetFunction
+              - logs:DescribeConfigurationTemplates
+              - iam:ListRoles
+              - iam:ListAttachedRolePolicies
+              - notifications:List*
+              - iam:GetPolicy
+              - iam:GetPolicyVersion
+              - kms:ListAliases
+              - uxc:GetAccountColor 
+            Resource: '*'
+
+          # ──  PassRole   ─────────
+          - Sid: BedrockPassRole
+            Effect: Allow
+            Action:
+              - iam:PassRole
+            Resource:
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:role/service-role/*'
+
+          # ──  CreateRole   ─────────
+          - Sid: BedrockCreateRole
+            Effect: Allow
+            Action:
+              - iam:CreateRole
+            Resource:
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:role/service-role/*'
+
+          # ── 3.5  InvokeModelWithResponseStream – Amazon Nova Lite ─────────
+          - Sid: BedrockInvokeClaude
+            Effect: Allow
+            Action:
+              - bedrock:InvokeModelWithResponseStream
+              - bedrock:InvokeModel
+            Resource:
+              - !Sub 'arn:aws:bedrock:${AWS::Region}::inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0'
+
+
+          # ── 3.6  Lectura general sobre Amazon Bedrock ─────────────────────
+          - Sid: BedrockReadAll
+            Effect: Allow
+            Action:
+              - bedrock:GetFoundationModel
+              - bedrock:GetFoundationModelAvailability
+              - bedrock:GetModelInvocationLoggingConfiguration
+              - bedrock:GetUseCaseForModelAccess
+              - bedrock:GetAgent
+              - bedrock:GetCustomModel
+              - bedrock:List*
+              - bedrock:GetProvisionedModelThroughput
+            Resource: '*'
+
+  # ── 3. Grupo IAM auxiliar ──────────────────────────────────────────────────
+  DeveloperGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: DeveloperGroup
+      ManagedPolicyArns:
+        - !Ref DeveloperPermissionsPolicy
+
+  # ── 4. Adjuntar usuario al grupo (= adjuntar la política) ─────────────────
+  AddDeveloperToGroup:
+    Type: AWS::IAM::UserToGroupAddition
+    Properties:
+      GroupName: !Ref DeveloperGroup
+      Users:
+        - !Ref DeveloperUser
+
+  Products:
+    UpdateReplacePolicy: "Delete"
+    DeletionPolicy: "Delete"
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: product_name
+          AttributeType: S
+        - AttributeName: category
+          AttributeType: S
+        - AttributeName: gender
+          AttributeType: S
+        - AttributeName: occasion
+          AttributeType: S
+      KeySchema:
+        - AttributeName: product_name
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: category-index
+          KeySchema:
+            - AttributeName: category
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: gender-index
+          KeySchema:
+            - AttributeName: gender
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: occasion-index
+          KeySchema:
+            - AttributeName: occasion
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: alias/aws/dynamodb
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+  Cart:
+    UpdateReplacePolicy: "Delete"
+    DeletionPolicy: "Delete"
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: product_name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH
+        - AttributeName: product_name
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: alias/aws/dynamodb
+      BillingMode: PAY_PER_REQUEST
+  PolicyDynamoDB:
+    UpdateReplacePolicy: "Delete"
+    Type: "AWS::IAM::ManagedPolicy"
+    DeletionPolicy: "Delete"
+    Properties:
+      Description: ""
+      Groups: []
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:Scan
+            Resource:
+              - !GetAtt Products.Arn
+          - Effect: Allow
+            Action:
+              - dynamodb:PutItem
+            Resource:
+              - !GetAtt Products.Arn
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:DeleteItem
+              - dynamodb:Scan
+            Resource:
+              - !GetAtt Cart.Arn
+      Users: []
+  IAMManagedPolicy00policyserviceroleAmazonBedrockAgentBedrockFoundationModelPolicy:
+    UpdateReplacePolicy: "Delete"
+    Type: "AWS::IAM::ManagedPolicy"
+    DeletionPolicy: "Delete"
+    Properties:
+      Path: "/service-role/"
+      Description: ""
+      Groups: []
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Resource:
+          - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0"
+          - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0"
+          - !Sub "arn:${AWS::Partition}:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0"
+          Action: 
+          - "bedrock:InvokeModel"
+          - "bedrock:InvokeModelWithResponseStream"
+          - "bedrock:GetInferenceProfile"
+          - "bedrock:GetFoundationModel"
+          Effect: "Allow"
+          Sid: "AmazonBedrockAgentBedrockFoundationModelPolicyProd"
+      Users: []
+  AMManagedPolicy00AmazonBedrockAgentRetrieveKnowledgeBasePolicyProd:
+    UpdateReplacePolicy: "Delete"
+    Type: "AWS::IAM::ManagedPolicy"
+    DeletionPolicy: "Delete"
+    Properties:
+      Path: "/service-role/"
+      Description: ""
+      Groups: []
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Resource:
+          - !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*"
+          Action: "bedrock:Retrieve"
+          Effect: "Allow"
+          Sid: "AmazonBedrockAgentRetrieveKnowledgeBasePolicyProd"
+      Users: []
+  IAMMarketplacePolicy:
+    UpdateReplacePolicy: "Delete"
+    Type: "AWS::IAM::ManagedPolicy"
+    DeletionPolicy: "Delete"
+    Properties:
+      Description: "Policy for AWS Marketplace access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: "Allow"
+          Action:
+            - "aws-marketplace:ViewSubscriptions"
+            - "aws-marketplace:Subscribe"
+            - "aws-marketplace:Unsubscribe"
+          Resource: "*"
+  IAMRole00AmazonBedrockExecutionRoleForAgents:
+    UpdateReplacePolicy: "Delete"
+    Type: "AWS::IAM::Role"
+    DeletionPolicy: "Delete"
+    Properties:
+      Path: "/service-role/"
+      ManagedPolicyArns:
+      - Ref: "IAMManagedPolicy00policyserviceroleAmazonBedrockAgentBedrockFoundationModelPolicy"
+      - Ref: "AMManagedPolicy00AmazonBedrockAgentRetrieveKnowledgeBasePolicyProd"
+      - Ref: "IAMMarketplacePolicy"
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Condition:
+            StringEquals:
+              aws:SourceAccount: !Ref "AWS::AccountId"
+            ArnLike:
+              aws:SourceArn: !Sub 'arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*'
+          Action: "sts:AssumeRole"
+          Effect: "Allow"
+          Principal:
+            Service: "bedrock.amazonaws.com"
+          Sid: "AmazonBedrockAgentBedrockFoundationModelPolicyProd"
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Condition:
+            StringEquals:
+              aws:SourceAccount: !Ref "AWS::AccountId"
+          Effect: Allow
+          Principal:
+            Service:
+              - lambda.amazonaws.com
+          Action:
+            - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - Ref: "PolicyDynamoDB"
+      
+  GetProductDetailsFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: !Sub |
+          '''
+          MIT No Attribution
+
+          Copyright 2024 Amazon Web Services
+
+          Permission is hereby granted, free of charge, to any person obtaining a copy of this
+          software and associated documentation files (the "Software"), to deal in the Software
+          without restriction, including without limitation the rights to use, copy, modify,
+          merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+          permit persons to whom the Software is furnished to do so.
+
+          THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+          INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+          PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+          HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+          OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+          SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+          '''
+          import json
+          import boto3
+          from botocore.exceptions import ClientError
+          dynamodb = boto3.resource('dynamodb')
+          table = dynamodb.Table('${Products}')
+
+
+          def lambda_handler(event, context):
+              """ function to get data from Products table """
+              try:
+                  if parameters := event.get('parameters'):
+                      # Build the filter expression based on the provided query parameters
+                      filter_expression = " AND ".join([f"#{param['name']} = :{param['name']}" for param in parameters])
+                      expression_attribute_values = {f":{param['name']}":param['value'] for param in parameters}
+                      expression_attribute_names = {f"#{param['name']}":param['name'] for param in parameters}
+                      # Retrieve products of the DynamoDB table, first results page only limited to 100 items
+                      response = table.scan(
+                          FilterExpression=filter_expression,
+                          ExpressionAttributeNames=expression_attribute_names,
+                          ExpressionAttributeValues=expression_attribute_values,
+                          Limit=100
+                          )
+                  else:
+                      # In case no filters the Retrieve all products of the DynamoDB table, first results page only limited to 100 items
+                      response = table.scan(Limit=100)
+                  products = response['Items']
+                  action_response = {
+                      'actionGroup': event['actionGroup'],
+                      'apiPath': event['apiPath'],
+                      'httpMethod': event['httpMethod'],
+                      'httpStatusCode': 200,
+                      'responseBody': {
+                          "application/json": {
+                              "body": json.dumps(products)
+                          }
+                      }
+                  }
+                  api_response = {'response': action_response, 'messageVersion': event['messageVersion']}
+                  print(f"Response: {api_response}")
+                  return api_response
+              except ClientError as e:
+                  error_response = {
+                      'actionGroupName': 'Get-Product-Recommendations',
+                      'apiPath': '/products',
+                      'httpMethod': 'GET',
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+                  api_error_response = {'response': error_response, 'messageVersion': '1.0'}
+                  print(f"Response: {api_error_response}")
+                  return api_error_response
+              except Exception as e:
+                  error_response = {
+                      'actionGroupName': 'Get-Product-Recommendations',
+                      'apiPath': '/products',
+                      'httpMethod': 'GET',
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+                  api_error_response = {'response': error_response, 'messageVersion': '1.0'}
+                  print(f"Response: {api_error_response}")
+                  return api_error_response
+
+      Handler: index.lambda_handler
+      Runtime: python3.12
+      Role: !GetAtt LambdaExecutionRole.Arn
+
+  AgentLambdapermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt GetProductDetailsFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref "AWS::AccountId"
+
+  AddToCartFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt AddToCartFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref "AWS::AccountId"
+
+  GetCartFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt GetCartFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: bedrock.amazonaws.com
+      SourceAccount: !Ref "AWS::AccountId"
+  
+  PopulateProductsTableFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: !Sub |
+          '''
+          MIT No Attribution
+
+          Copyright 2024 Amazon Web Services
+
+          Permission is hereby granted, free of charge, to any person obtaining a copy of this
+          software and associated documentation files (the "Software"), to deal in the Software
+          without restriction, including without limitation the rights to use, copy, modify,
+          merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+          permit persons to whom the Software is furnished to do so.
+
+          THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+          INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+          PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+          HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+          OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+          SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+          '''
+          import boto3
+          import random
+          import cfnresponse
+          from botocore.exceptions import ClientError
+
+
+          dynamodb = boto3.resource('dynamodb')
+          table = dynamodb.Table('${Products}')
+          # Sample data for product names, descriptions, categories, genders, and occasions.
+          #the product names and descriptions should respect the categories
+          #for example, a product name like "rose" should be used with a category of "flowers"
+          product_names = {
+              'jewelry': ['necklace', 'bracelet', 'ring', 'earrings'],
+              'accessories': ['scarf', 'hat', 'bag', 'sunglasses'],
+              'perfumes': ['eau de toilette', 'eau de perfume', 'cologne', 'fragrance'],
+              'flowers': ['rose', 'lilies', 'tulips', 'orchids'],
+              'watches': ['analog', 'digital', 'smartwatch', 'luxury'],
+              'toys': ['RC Car', 'action figure', 'board game', 'puzzle']
+          }
+          descriptions = {
+              'jewelry': ['Elegant', 'Timeless', 'Sparkling', 'Sophisticated'],
+              'accessories': ['Stylish', 'Trendy', 'Versatile', 'Chic'],
+              'perfumes': ['Captivating', 'Alluring', 'Refreshing', 'Luxurious'],
+              'flowers': ['Vibrant', 'Fragrant', 'Romantic', 'Soothing'],
+              'watches': ['Precise', 'Durable', 'Sleek', 'Functional'],
+              'toys': ['Entertaining', 'Educational', 'Imaginative', 'Engaging']
+          }
+          occasion_descriptions = {
+              'party': ['Festive', 'Lively', 'Celebratory', 'Joyful'],
+              'wedding': ['Bridal', 'Ceremonial', 'Romantic', 'Elegant'],
+              'date': ['Charming', 'Intimate', 'Thoughtful', 'Memorable'],
+              'valentines day': ['Amorous', 'Passionate', 'Affectionate', 'Sentimental'],
+              'mothers day': ['Heartfelt', 'Cherished', 'Appreciative', 'Loving'],
+              'birthday': ['Celebratory', 'Festive', 'Delightful', 'Joyous']
+          }
+          categories = ['jewelry', 'accessories', 'perfumes', 'flowers', 'watches', 'toys']
+          genders = ['men', 'women', 'unisex']
+          occasions = ['party', 'wedding', 'date', 'valentines day', 'mothers day', 'birthday']
+
+          def generate_unique_product_name(category, occasion):
+              """Generate a unique product name based on the category and occasion."""
+              iteration = 0
+              while True:
+                  iteration += 1
+                  if iteration > 100:
+                      raise ValueError("Unable to generate a unique product name after 100 iterations.")
+                  product_name = f"{random.choice(occasion_descriptions[occasion])} {random.choice(product_names[category])}"
+                  # Check if the product name already exists in the DynamoDB table
+                  response = table.get_item(
+                      Key={
+                          'product_name': product_name
+                      },
+                      AttributesToGet=['product_name']
+                  )
+                  if 'Item' not in response:
+                      return product_name
+                  else:
+                      print(f"Product name '{product_name}' already exists. Generating a new one...")
+
+          def lambda_handler(event, context):
+              # Generate 100 sample data entries
+              for i in range(100):
+                  category = random.choice(categories)
+                  occasion = random.choice(occasions)
+                  try:
+                      product_name = generate_unique_product_name(category, occasion)
+                  except ValueError as e:
+                      responseData = {"Error": str(e)}
+                      cfnresponse.send(event, context, cfnresponse.FAILED, responseData, "CustomResourcePhysicalID")
+                      return
+                  product_description = f"{random.choice(descriptions[category])} {product_name}"
+                  gender = random.choice(genders)
+                  # Insert the sample data into the DynamoDB table
+                  try:
+                      table.put_item(
+                          Item={
+                              'product_name': product_name,
+                              'Product_description': product_description,
+                              'category': category,
+                              'gender': gender,
+                              'occasion': occasion
+                          }
+                      )
+                      responseData = {"Data": ""}
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, "CustomResourcePhysicalID")
+                  # handle exception
+                  except ClientError as e:
+                      responseData = {"Error": str(e)}
+                      cfnresponse.send(event, context, cfnresponse.FAILED, responseData, "CustomResourcePhysicalID")
+                      return
+
+      Handler: index.lambda_handler
+      Runtime: python3.12
+      Timeout: 30
+      Role: !GetAtt LambdaExecutionRole.Arn
+
+  AddToCartFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: !Sub |
+          '''
+          MIT No Attribution
+
+          Copyright 2024 Amazon Web Services
+
+          Permission is hereby granted, free of charge, to any person obtaining a copy of this
+          software and associated documentation files (the "Software"), to deal in the Software
+          without restriction, including without limitation the rights to use, copy, modify,
+          merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+          permit persons to whom the Software is furnished to do so.
+
+          THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+          INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+          PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+          HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+          OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+          SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+          '''
+          import json
+          import boto3
+          from botocore.exceptions import ClientError
+
+          dynamodb = boto3.resource('dynamodb')
+          cart_table = dynamodb.Table('${Cart}')
+          table = dynamodb.Table('${Products}')
+
+          def lambda_handler(event, context):
+              agent = event['agent']
+              actionGroup = event['actionGroup']
+              apiPath = event['apiPath']
+              httpMethod = event['httpMethod']
+              parameters = event.get('parameters', [])
+              query_params = {}
+              for param in parameters:
+                  query_params[param['name']] = param['value']
+
+              user_id = query_params.get('userId')
+              product_name = query_params.get('productName')
+
+              if not user_id or not product_name:
+                  responseBody = {
+                      "application/json": {
+                          "body": json.dumps('Missing required parameters: userId and productName')
+                      }
+                  }
+                  action_response = {
+                      'actionGroup': actionGroup,
+                      'apiPath': apiPath,
+                      'httpMethod': httpMethod,
+                      'httpStatusCode': 400,
+                      'responseBody': responseBody
+                  }
+                  return {'response': action_response, 'messageVersion': event['messageVersion']}
+              try:
+                  # Get the input product details from the Products table
+                  input_product = table.get_item(Key={'product_name': product_name}).get('Item')
+                  
+                  print(json.dumps(input_product))
+                  
+                  if not input_product:
+                      responseBody = {
+                          "application/json": {
+                              "body": json.dumps('input product not found in Products Table')
+                          }
+                      }
+                  
+                      action_response = {
+                          'actionGroup': actionGroup,
+                          'apiPath': apiPath,
+                          'httpMethod': httpMethod,
+                          'httpStatusCode': 400,
+                          'responseBody': responseBody
+                      }
+              
+                      api_response = {'response': action_response, 'messageVersion': event['messageVersion']}
+                      print("Response: {}".format(api_response))
+                      return api_response
+                      
+                  # Check if the item already exists in the cart
+                  response = cart_table.get_item(
+                      Key={
+                          'user_id': user_id,
+                          'product_name': product_name
+                      }
+                  )
+
+                  if 'Item' not in response:
+                      # Add the item to the cart
+                      cart_table.put_item(
+                          Item={
+                              'user_id': user_id,
+                              'product_name': product_name
+                          }
+                      )
+                      responseBody = {
+                          "application/json": {
+                              "body": json.dumps(f'Product "{product_name}" added to cart for user "{user_id}"')
+                          }
+                      }
+                      action_response = {
+                          'actionGroup': actionGroup,
+                          'apiPath': apiPath,
+                          'httpMethod': httpMethod,
+                          'httpStatusCode': 200,
+                          'responseBody': responseBody
+                      }
+                      return {'response': action_response, 'messageVersion': event['messageVersion']}
+                  else:
+                      responseBody = {
+                          "application/json": {
+                              "body": json.dumps(f'Product "{product_name}" already in cart for user "{user_id}"')
+                          }
+                      }
+                      action_response = {
+                          'actionGroup': actionGroup,
+                          'apiPath': apiPath,
+                          'httpMethod': httpMethod,
+                          'httpStatusCode': 400,
+                          'responseBody': responseBody
+                      }
+                      return {'response': action_response, 'messageVersion': event['messageVersion']}
+              except ClientError as e:
+                  error_message = e.response['Error']['Message']
+                  print(error_message)
+                  responseBody = {
+                      "application/json": {
+                          "body": json.dumps(f'Error: {error_message}')
+                      }
+                  }
+                  action_response = {
+                      'actionGroup': actionGroup,
+                      'apiPath': apiPath,
+                      'httpMethod': httpMethod,
+                      'httpStatusCode': 400,
+                      'responseBody': responseBody
+                  }
+                  return {'response': action_response, 'messageVersion': event['messageVersion']}
+
+
+      Handler: index.lambda_handler
+      Runtime: python3.12
+      Role: !GetAtt LambdaExecutionRole.Arn
+
+  GetCartFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: !Sub |
+          '''
+          MIT No Attribution
+
+          Copyright 2024 Amazon Web Services
+
+          Permission is hereby granted, free of charge, to any person obtaining a copy of this
+          software and associated documentation files (the "Software"), to deal in the Software
+          without restriction, including without limitation the rights to use, copy, modify,
+          merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+          permit persons to whom the Software is furnished to do so.
+
+          THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+          INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+          PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+          HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+          OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+          SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+          '''
+          import json
+          import boto3
+
+          dynamodb = boto3.resource('dynamodb')
+          cart_table = dynamodb.Table('${Cart}')
+
+          def lambda_handler(event, context):
+              agent = event['agent']
+              actionGroup = event['actionGroup']
+              apiPath = event['apiPath']
+              httpMethod = event['httpMethod']
+              parameters = event.get('parameters', [])
+              query_params = {}
+              for param in parameters:
+                  query_params[param['name']] = param['value']
+
+              user_id = query_params.get('userId')
+
+              if not user_id:
+                  responseBody = {
+                      "application/json": {
+                          "body": json.dumps('Missing required parameter: userId')
+                      }
+                  }
+                  action_response = {
+                      'actionGroup': actionGroup,
+                      'apiPath': apiPath,
+                      'httpMethod': httpMethod,
+                      'httpStatusCode': 400,
+                      'responseBody': responseBody
+                  }
+                  return {'response': action_response, 'messageVersion': event['messageVersion']}
+
+              # Scan the table to get all items for the user
+              response = cart_table.scan(
+                  FilterExpression=boto3.dynamodb.conditions.Key('user_id').eq(user_id)
+              )
+
+              items = response.get('Items', [])
+              cart_items = [{'product_name': item['product_name']} for item in items]
+
+              responseBody = {
+                  "application/json": {
+                      "body": json.dumps(cart_items)
+                  }
+              }
+              action_response = {
+                  'actionGroup': actionGroup,
+                  'apiPath': apiPath,
+                  'httpMethod': httpMethod,
+                  'httpStatusCode': 200,
+                  'responseBody': responseBody
+              }
+              return {'response': action_response, 'messageVersion': event['messageVersion']}
+
+      Handler: index.lambda_handler
+      Runtime: python3.12
+      Role: !GetAtt LambdaExecutionRole.Arn
+
+  Fninvoke:
+    Type: AWS::CloudFormation::CustomResource
+    Version: "1.0"
+    Properties:
+      ServiceToken: !GetAtt PopulateProductsTableFunction.Arn
+
+  ClaudeLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: BedrockAndMarketplaceAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                - "bedrock:InvokeModel"
+                - "bedrock:InvokeModelWithResponseStream"
+                - "bedrock:GetInferenceProfile"
+                - "bedrock:GetFoundationModel"
+                Resource: 
+                  - !Sub "arn:${AWS::Partition}:bedrock:*:${AWS::AccountId}:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0"
+                  - !Sub "arn:${AWS::Partition}:bedrock:*:${AWS::AccountId}:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0"
+                  - !Sub "arn:${AWS::Partition}:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0"
+              - Effect: Allow
+                Action:
+                  - aws-marketplace:ViewSubscriptions
+                  - aws-marketplace:Subscribe
+                  - aws-marketplace:Unsubscribe
+                Resource: '*'
+
+    # Lambda function to call Claude Sonnet 4.5 and 3.7
+  ClaudeLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: !GetAtt ClaudeLambdaExecutionRole.Arn
+      Timeout: 120
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import cfnresponse
+          
+          bedrock = boto3.client('bedrock-runtime')
+          
+          def lambda_handler(event, context):
+              try:
+                  if event['RequestType'] == 'Delete':
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                      return
+                  
+                  prompt = "Hi"
+                  
+                  responses = []
+                  
+                  # Call Claude Haiku 4.5 via US inference profile
+                  response = bedrock.invoke_model(
+                      modelId='us.anthropic.claude-haiku-4-5-20251001-v1:0',
+                      body=json.dumps({
+                          'anthropic_version': 'bedrock-2023-05-31',
+                          'max_tokens': 50,
+                          'messages': [{'role': 'user', 'content': prompt}]
+                      })
+                  )
+                  
+                  result = json.loads(response['body'].read())
+                  responses.append({
+                      'model': 'claude-haiku-4-5-us',
+                      'status': 'success'
+                  })
+                  
+                
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                      'ClaudeResponses': json.dumps(responses)
+                  })
+                  
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+
+  # Custom resource that triggers the Lambda function
+  ClaudeCustomResource:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt ClaudeLambdaFunction.Arn
+
+
+Outputs:
+  ProductsTableName:
+    Description: The name of the DynamoDB table
+    Value: !Ref Products
+    Export:
+      Name: ProductsTableName
+  LambdaFunctionArn:
+    Description: 'ARN of the Lambda function'
+    Value: !GetAtt ClaudeLambdaFunction.Arn
+  ClaudeResponses:
+    Description: 'Responses from Claude Haiku 4.5'
+    Value: !GetAtt ClaudeCustomResource.ClaudeResponses

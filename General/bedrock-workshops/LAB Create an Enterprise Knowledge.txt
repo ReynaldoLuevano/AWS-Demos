@@ -1,0 +1,74 @@
+LAB: Create an Enterprise Knowledge Assistant
+
+Tarea 1 Examina los datos existentes de la empresa
+Paso 1 - Abre la consola de AWS y en la barra de busqueda de servicios accede a S3
+Paso 2 - En la consola de Servicio de S3 y busca el bucket con nombre itera-bredrock-workshop-data-xxxx
+Paso 3 - Abre uno de los ficheros para ver la estructura del mismo, observaras que contiene información sobre ventas de los productos
+
+Tarea 2 Examina el Vector Store existente
+Paso 4. En el cuadro de búsqueda de la barra de navegación superior, escribe opensearch
+Paso 5. En los resultados de la búsqueda, en la sección Servicios, haz clic en Amazon OpenSearch Service.
+Paso 6. En los resultados de la búsqueda, en la sección Servicios, haz clic en Amazon OpenSearch Service.
+Paso 7. En el panel de navegación izquierdo, debajo de "Sin servidor", haga clic en "Colecciones".
+Paso 8. En la sección Colecciones, haga clic en la colección bedrock-knowledge-base.
+Paso 9. En la pestaña Overview, debajo de ARN de la colección, haga clic en el icono de copiar para copiar el ARN proporcionado y, a continuación, péguelo en el editor de texto que prefiera en su dispositivo (Utilizará este ARN en un paso posterior)
+Paso 10. Haga clic en la pestaña Índices.
+Paso 11. Haga clic en bedrock-knowledge-base-index.
+Paso 12. En el apartado Nombre del índice, revise el índice creado. Copie el nombre 
+Paso 13. En la sección Campos vectoriales, revise el nombre del campo vectorial creado.
+Paso 14. Revise las demás configuraciones asociadas al índice vectorial.
+Paso 15. En la sección Metadatos, revise los campos de asignación.
+
+Tarea 3. Crear la Knowledge Base en Bedrock para implementar RAG
+Paso 16. En el cuadro de búsqueda de la barra de navegación superior, escribe:bedrock. En los resultados de la búsqueda, en la sección Servicios, haz clic en Amazon Bedrock.
+Paso 17. En el panel de navegación izquierdo, desplácese hacia abajo hasta "Crear" y haga clic en "Bases de conocimiento".Revise la información sobre las bases de conocimiento.
+Paso 18. En la sección Bases de conocimiento, haga clic en Crear para expandir el menú. Elija Base de conocimiento con almacén de vectores.
+Paso 19. En el paso «Proporcionar detalles de la base de conocimientos», escriba: sales-kb
+Paso 20. En «Rol de ejecución», seleccione «Usar un rol de servicio existente».Debajo, en la lista desplegable, seleccione «Bedrock_KB_Role».
+Paso 21. Revise los distintos tipos de fuentes de datos compatibles.En «Elegir tipo de fuente de datos», seleccione Amazon S3.
+Paso 22. Desplácese hasta el final de la página y haga clic en «Siguiente» (no se muestra).
+Paso 23. En el paso «Configurar origen de datos», en «Nombre del origen de datos», escriba: s3-sales-data
+Paso 24. En «URI de S3», haga clic en «Explorar S3».
+Paso 25. En la ventana emergente (no se muestra), seleccione el bucket de S3 «sales-data» y, a continuación, revise para confirmar que la URI de S3 seleccionada sea similar a la del ejemplo de la captura de pantalla.
+Paso 26. En «Estrategia de análisis», mantenga la opción predeterminada «Amazon Bedrock default parser».
+Paso 27. Para la estrategia de segmentación, seleccione Segmentación predeterminada. Haga clic en Siguiente.
+Paso 28. En el paso «Configurar el almacenamiento y procesamiento de datos», para el modelo «Incrustaciones», haga clic en «Seleccionar modelo».
+Paso 29. En la ventana emergente, en Modelos, seleccione Titan Text Embeddings V2. Haga clic en Aplicar.
+Paso 30. Revise para confirmar que el modelo de incrustaciones seleccionado coincide con el ejemplo de la captura de pantalla.
+Paso 31. En Configuraciones adicionales, en Tipo de incrustaciones, seleccione Incrustaciones vectoriales de punto flotante.
+Paso 32. En Dimensiones del vector, mantenga el valor predeterminado de 1024.
+Paso 33. Para el método de creación del almacén de vectores, seleccione «Usar un almacén de vectores existente».
+Paso 34. Para el tipo de almacén de vectores, seleccione «OpenSearch Serverless».
+Paso 35. Para el ARN de la colección, pegue el ARN que copió en un paso anterior.
+Paso 36. Para el nombre del índice de vectores, escriba bedrock-knowledge-base-index
+Paso 37. Para  nombre del campo Vector, escriba: bedrock-knowledge-base-default-vector
+Paso 38. Para el nombre del campo Texto, escriba: AMAZON_BEDROCK_TEXT_CHUNK
+Paso 39. Para el nombre del campo de metadatos gestionado por Bedrock, escriba: AMAZON_BEDROCK_METADATA
+Paso 40. Haga clic en Siguiente.
+Paso 41. En el paso «Revisar y crear», revise las opciones seleccionadas.
+Paso 42. En la parte inferior de la página, haga clic en «Crear base de conocimientos».
+Paso 43.  In the information alert, review the message. "The vector database might take up to 5 minutes to fully configure in OpenSearch Serverless."
+Paso 44. En Estado, revise para confirmar que el estado cambia a Disponible.La base de conocimientos puede tardar hasta 5 minutos en crearse. Espere a que aparezca Disponible antes de continuar.
+Paso 45. En la sección Origen de datos, marque la casilla para seleccionar s3-sales-data.
+Paso 46. Haga clic en Sincronizar.- La sincronización puede tardar un par de minutos en completarse.
+Paso 47. En la alerta de éxito, revise el mensaje.
+Paso 48. Compruebe que puede hacer clic en Agregar para añadir más orígenes de datos a la base de conocimientos.
+Paso 49. Haga clic en el origen de datos s3-sales-data.
+Paso 50. En las secciones Historial de sincronización y Documentos, revise los detalles de la sincronización completada y los documentos que se importaron correctamente.
+Paso 51. En Archivos de origen, verifique que se hayan importado 100 archivos. Si se importaron menos de 100 archivos, es posible que deba volver a sincronizar la fuente de datos para procesar los archivos que se omitieron.
+
+Tarea 4. Probar RAG un Modelo Fundacional
+Paso 52. En el panel de navegación izquierdo, haga clic en Bases de conocimiento.
+Paso 53 the Knowledge Bases section, choose the radio button to select sales-kb.
+Paso 54. Click Test Knowledge Base.
+Paso 55. En el panel de configuraciones, haga clic en Seleccionar modelo.
+Paso 56. En la ventana emergente, para proveedores de modelos sin servidor, seleccione Amazon.
+Paso 57. Para modelos con acceso, seleccione Nova Lite.
+Paso 58. Haga clic en Aplicar.
+Paso 59. En el cuadro de texto del panel de prueba, escriba una pregunta relacionada con las ventas, como por ejemplo:
+¿Qué ProductId tuvo las ventas más bajas en el primer trimestre?
+Paso 60. Haga clic en el icono Enviar.
+Paso 61. Revise la respuesta. El modelo Nova Lite consultó la base de conocimientos y obtuvo el producto con las ventas más bajas en el primer trimestre.
+
+Conclusiones
+En este laboratorio, has aprendido a crear una Knowledge Base en Bedrock para implementar RAG. 

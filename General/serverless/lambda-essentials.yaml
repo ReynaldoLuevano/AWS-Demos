@@ -1,0 +1,506 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Academia Cloud & IA – Catálogo de cursos.
+  Incluye tabla DynamoDB con datos de ejemplo, función getCourses e insertCourse.
+
+# =============================================================
+# PARÁMETROS
+# =============================================================
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Entorno de despliegue
+
+# =============================================================
+# RECURSOS
+# =============================================================
+Resources:
+
+  # -----------------------------------------------------------
+  # DYNAMODB – Tabla de cursos
+  # -----------------------------------------------------------
+  CoursesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "courses-${Environment}"
+      BillingMode: PAY_PER_REQUEST
+      # Partition Key: courseId  (ej: "AWS-001")
+      # Sort Key    : category   (ej: "cloud" | "ia" | "devops")
+      # Con este esquema podemos consultar todos los cursos de
+      # una categoría de forma eficiente con Query.
+      AttributeDefinitions:
+        - AttributeName: courseId
+          AttributeType: S
+        - AttributeName: category
+          AttributeType: S
+      KeySchema:
+        - AttributeName: courseId
+          KeyType: HASH       # Partition Key
+        - AttributeName: category
+          KeyType: RANGE      # Sort Key
+      # GSI para listar cursos por categoría sin conocer el courseId
+      GlobalSecondaryIndexes:
+        - IndexName: category-index
+          KeySchema:
+            - AttributeName: category
+              KeyType: HASH
+            - AttributeName: courseId
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Project
+          Value: AcademiaCloudIA
+        - Key: Environment
+          Value: !Ref Environment
+
+  # -----------------------------------------------------------
+  # CARGA INICIAL DE DATOS – Custom Resource con Lambda
+  # -----------------------------------------------------------
+  SeedDataFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "courses-seed-${Environment}"
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 60
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref CoursesTable
+      Code:
+        ZipFile: |
+          import boto3, os, json, urllib.request, urllib.parse
+
+          dynamodb = boto3.resource('dynamodb')
+
+          COURSES = [
+            # ── AWS ──────────────────────────────────────────────────────
+            {"courseId":"AWS-001","category":"cloud","title":"AWS Solutions Architect Associate",
+             "provider":"Amazon Web Services","level":"intermediate","durationHours":40,
+             "price":299.00,"currency":"EUR","language":"es",
+             "tags":["aws","arquitectura","s3","ec2","rds","iam"],
+             "description":"Preparación completa para el examen SAA-C03.",
+             "rating":4.8,"enrollments":1240,"active":True},
+            {"courseId":"AWS-002","category":"cloud","title":"AWS Developer Associate",
+             "provider":"Amazon Web Services","level":"intermediate","durationHours":35,
+             "price":279.00,"currency":"EUR","language":"es",
+             "tags":["aws","lambda","dynamodb","api-gateway","cdk"],
+             "description":"Desarrollo de aplicaciones cloud-native en AWS.",
+             "rating":4.7,"enrollments":980,"active":True},
+            {"courseId":"AWS-003","category":"cloud","title":"AWS Cloud Practitioner",
+             "provider":"Amazon Web Services","level":"beginner","durationHours":20,
+             "price":149.00,"currency":"EUR","language":"es",
+             "tags":["aws","fundamentos","cloud","certificacion"],
+             "description":"Introducción a AWS y sus servicios principales.",
+             "rating":4.9,"enrollments":3200,"active":True},
+            # ── GCP ──────────────────────────────────────────────────────
+            {"courseId":"GCP-001","category":"cloud","title":"Google Cloud Professional Cloud Architect",
+             "provider":"Google Cloud","level":"advanced","durationHours":50,
+             "price":349.00,"currency":"EUR","language":"es",
+             "tags":["gcp","arquitectura","kubernetes","bigquery"],
+             "description":"Diseño de soluciones escalables en Google Cloud.",
+             "rating":4.6,"enrollments":620,"active":True},
+            {"courseId":"GCP-002","category":"cloud","title":"Google Cloud Associate Engineer",
+             "provider":"Google Cloud","level":"intermediate","durationHours":38,
+             "price":269.00,"currency":"EUR","language":"es",
+             "tags":["gcp","compute-engine","gke","iam"],
+             "description":"Gestión de infraestructura en Google Cloud Platform.",
+             "rating":4.5,"enrollments":540,"active":True},
+            # ── Azure ─────────────────────────────────────────────────────
+            {"courseId":"AZ-001","category":"cloud","title":"Microsoft Azure Administrator AZ-104",
+             "provider":"Microsoft Azure","level":"intermediate","durationHours":42,
+             "price":289.00,"currency":"EUR","language":"es",
+             "tags":["azure","administracion","virtual-machines","networking"],
+             "description":"Administración de recursos y servicios en Azure.",
+             "rating":4.7,"enrollments":870,"active":True},
+            {"courseId":"AZ-002","category":"cloud","title":"Microsoft Azure AI Fundamentals AI-900",
+             "provider":"Microsoft Azure","level":"beginner","durationHours":18,
+             "price":139.00,"currency":"EUR","language":"es",
+             "tags":["azure","ia","machine-learning","fundamentos"],
+             "description":"Introducción a la inteligencia artificial en Azure.",
+             "rating":4.8,"enrollments":1450,"active":True},
+            # ── IA / ML ───────────────────────────────────────────────────
+            {"courseId":"AI-001","category":"ia","title":"Machine Learning con Python y Scikit-Learn",
+             "provider":"Academia Cloud & IA","level":"intermediate","durationHours":55,
+             "price":199.00,"currency":"EUR","language":"es",
+             "tags":["python","scikit-learn","ml","regresion","clasificacion"],
+             "description":"Fundamentos y práctica de Machine Learning con Python.",
+             "rating":4.9,"enrollments":2100,"active":True},
+            {"courseId":"AI-002","category":"ia","title":"Deep Learning con TensorFlow y Keras",
+             "provider":"Academia Cloud & IA","level":"advanced","durationHours":65,
+             "price":249.00,"currency":"EUR","language":"es",
+             "tags":["python","tensorflow","keras","redes-neuronales","cnn","rnn"],
+             "description":"Redes neuronales profundas aplicadas a visión y NLP.",
+             "rating":4.8,"enrollments":1560,"active":True},
+            {"courseId":"AI-003","category":"ia","title":"LLMs y Generative AI con LangChain",
+             "provider":"Academia Cloud & IA","level":"advanced","durationHours":45,
+             "price":299.00,"currency":"EUR","language":"es",
+             "tags":["llm","langchain","openai","prompt-engineering","rag"],
+             "description":"Construcción de aplicaciones con modelos de lenguaje de gran escala.",
+             "rating":4.9,"enrollments":1890,"active":True},
+            {"courseId":"AI-004","category":"ia","title":"MLOps: De experimentos a producción",
+             "provider":"Academia Cloud & IA","level":"advanced","durationHours":48,
+             "price":279.00,"currency":"EUR","language":"es",
+             "tags":["mlops","mlflow","kubeflow","ci-cd","monitoring"],
+             "description":"Ciclo de vida completo de modelos ML en entornos productivos.",
+             "rating":4.7,"enrollments":720,"active":True},
+            {"courseId":"AI-005","category":"ia","title":"AWS SageMaker para Data Scientists",
+             "provider":"Amazon Web Services","level":"intermediate","durationHours":38,
+             "price":259.00,"currency":"EUR","language":"es",
+             "tags":["aws","sagemaker","ml","entrenamiento","despliegue"],
+             "description":"Entrenamiento y despliegue de modelos ML con SageMaker.",
+             "rating":4.6,"enrollments":830,"active":True},
+            # ── DevOps / IaC ──────────────────────────────────────────────
+            {"courseId":"DEV-001","category":"devops","title":"Terraform para infraestructura como código",
+             "provider":"Academia Cloud & IA","level":"intermediate","durationHours":40,
+             "price":219.00,"currency":"EUR","language":"es",
+             "tags":["terraform","iac","aws","azure","gcp"],
+             "description":"Provisión y gestión de infraestructura multi-cloud con Terraform.",
+             "rating":4.8,"enrollments":1340,"active":True},
+            {"courseId":"DEV-002","category":"devops","title":"Kubernetes: De cero a producción",
+             "provider":"Academia Cloud & IA","level":"intermediate","durationHours":52,
+             "price":239.00,"currency":"EUR","language":"es",
+             "tags":["kubernetes","docker","helm","eks","gke","aks"],
+             "description":"Orquestación de contenedores y despliegues en producción.",
+             "rating":4.9,"enrollments":1780,"active":True},
+            {"courseId":"DEV-003","category":"devops","title":"CI/CD con GitHub Actions y ArgoCD",
+             "provider":"Academia Cloud & IA","level":"intermediate","durationHours":30,
+             "price":189.00,"currency":"EUR","language":"es",
+             "tags":["github-actions","argocd","gitops","ci-cd","pipelines"],
+             "description":"Pipelines modernos de integración y entrega continua.",
+             "rating":4.7,"enrollments":960,"active":True},
+            # ── Seguridad Cloud ────────────────────────────────────────────
+            {"courseId":"SEC-001","category":"security","title":"Cloud Security en AWS",
+             "provider":"Academia Cloud & IA","level":"advanced","durationHours":44,
+             "price":319.00,"currency":"EUR","language":"es",
+             "tags":["aws","seguridad","iam","waf","shield","guardduty"],
+             "description":"Diseño e implementación de seguridad en entornos AWS.",
+             "rating":4.8,"enrollments":680,"active":True},
+          ]
+
+          def send_response(event, context, status, reason=""):
+              body = json.dumps({"Status": status, "Reason": reason,
+                                 "PhysicalResourceId": "seed-data",
+                                 "StackId": event["StackId"],
+                                 "RequestId": event["RequestId"],
+                                 "LogicalResourceId": event["LogicalResourceId"]})
+              req = urllib.request.Request(event["ResponseURL"],
+                                           data=body.encode(),
+                                           headers={"Content-Type": ""},
+                                           method="PUT")
+              urllib.request.urlopen(req)
+
+          def handler(event, context):
+              if event["RequestType"] == "Delete":
+                  send_response(event, context, "SUCCESS")
+                  return
+              try:
+                  table = dynamodb.Table(os.environ["TABLE_NAME"])
+                  from decimal import Decimal
+                  with table.batch_writer() as batch:
+                      for c in COURSES:
+                          item = {k: Decimal(str(v)) if isinstance(v, float) else v
+                                  for k, v in c.items()}
+                          batch.put_item(Item=item)
+                  send_response(event, context, "SUCCESS")
+              except Exception as e:
+                  send_response(event, context, "FAILED", str(e))
+
+  SeedDataTrigger:
+    Type: Custom::SeedData
+    DependsOn: CoursesTable
+    Properties:
+      ServiceToken: !GetAtt SeedDataFunction.Arn
+
+  # -----------------------------------------------------------
+  # IAM ROLE – Compartido por las tres funciones Lambda
+  # -----------------------------------------------------------
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "courses-lambda-role-${Environment}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBCourseAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:BatchWriteItem
+                  - dynamodb:Scan
+                  - dynamodb:Query
+                Resource:
+                  - !GetAtt CoursesTable.Arn
+                  - !Sub "${CoursesTable.Arn}/index/*"
+
+  # -----------------------------------------------------------
+  # LAMBDA 1 – getCourses
+  # -----------------------------------------------------------
+  GetCoursesFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "getCourses-${Environment}"
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 15
+      MemorySize: 256
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref CoursesTable
+          GSI_NAME: category-index
+      Description: >
+        Obtiene cursos de DynamoDB.
+        Soporta: listar todos, filtrar por categoría, buscar por courseId.
+      Code:
+        ZipFile: |
+          import boto3, os, json
+          from decimal import Decimal
+          from boto3.dynamodb.conditions import Key
+
+          dynamodb = boto3.resource('dynamodb')
+          table    = dynamodb.Table(os.environ['TABLE_NAME'])
+          GSI      = os.environ['GSI_NAME']
+
+          def decimal_to_native(obj):
+              """Convierte Decimal a int o float para serialización JSON."""
+              if isinstance(obj, Decimal):
+                  return int(obj) if obj % 1 == 0 else float(obj)
+              raise TypeError
+
+          def response(status_code, body):
+              return {
+                  "statusCode": status_code,
+                  "headers": {
+                      "Content-Type": "application/json",
+                      "Access-Control-Allow-Origin": "*"
+                  },
+                  "body": json.dumps(body, default=decimal_to_native)
+              }
+
+          def handler(event, context):
+              """
+              Modos de uso (queryStringParameters):
+                Sin parámetros          → devuelve todos los cursos (Scan)
+                ?category=cloud         → cursos de esa categoría (GSI Query)
+                ?courseId=AWS-001&category=cloud → curso específico (GetItem)
+                ?active=true            → solo cursos activos
+              """
+              params = event.get("queryStringParameters") or {}
+              category  = params.get("category")
+              course_id = params.get("courseId")
+              only_active = params.get("active", "").lower() == "true"
+
+              try:
+                  # -- Caso 1: GetItem por clave compuesta -----------------
+                  if course_id and category:
+                      result = table.get_item(
+                          Key={"courseId": course_id, "category": category}
+                      )
+                      item = result.get("Item")
+                      if not item:
+                          return response(404, {"message": "Curso no encontrado"})
+                      return response(200, {"course": item})
+
+                  # -- Caso 2: Query por categoría (GSI) -------------------
+                  if category:
+                      result = table.query(
+                          IndexName=GSI,
+                          KeyConditionExpression=Key("category").eq(category)
+                      )
+                      items = result.get("Items", [])
+                      if only_active:
+                          items = [c for c in items if c.get("active") is True]
+                      return response(200, {
+                          "category": category,
+                          "count": len(items),
+                          "courses": items
+                      })
+
+                  # -- Caso 3: Scan completo --------------------------------
+                  result = table.scan()
+                  items = result.get("Items", [])
+                  if only_active:
+                      items = [c for c in items if c.get("active") is True]
+                  return response(200, {
+                      "count": len(items),
+                      "courses": items
+                  })
+
+              except Exception as e:
+                  return response(500, {"message": "Error interno", "detail": str(e)})
+
+  # -----------------------------------------------------------
+  # LAMBDA 2 – insertCourse
+  # -----------------------------------------------------------
+  InsertCourseFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "insertCourse-${Environment}"
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 15
+      MemorySize: 256
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref CoursesTable
+      Description: >
+        Inserta o actualiza un curso en DynamoDB.
+        El cuerpo del evento debe incluir courseId y category como mínimo.
+      Code:
+        ZipFile: |
+          import boto3, os, json
+          from decimal import Decimal
+          from datetime import datetime, timezone
+
+          dynamodb = boto3.resource('dynamodb')
+          table    = dynamodb.Table(os.environ['TABLE_NAME'])
+
+          # Campos obligatorios
+          REQUIRED = {"courseId", "category", "title", "level", "durationHours", "price"}
+
+          # Valores válidos
+          VALID_LEVELS     = {"beginner", "intermediate", "advanced"}
+          VALID_CATEGORIES = {"cloud", "ia", "devops", "security", "data"}
+
+          def float_to_decimal(obj):
+              """Convierte floats a Decimal para DynamoDB."""
+              if isinstance(obj, float):
+                  return Decimal(str(obj))
+              if isinstance(obj, dict):
+                  return {k: float_to_decimal(v) for k, v in obj.items()}
+              if isinstance(obj, list):
+                  return [float_to_decimal(i) for i in obj]
+              return obj
+
+          def response(status_code, body):
+              return {
+                  "statusCode": status_code,
+                  "headers": {
+                      "Content-Type": "application/json",
+                      "Access-Control-Allow-Origin": "*"
+                  },
+                  "body": json.dumps(body)
+              }
+
+          def handler(event, context):
+              """
+              Inserta un nuevo curso o actualiza uno existente (upsert).
+
+              Ejemplo de evento de prueba:
+              {
+                "body": "{\"courseId\":\"AWS-010\",\"category\":\"cloud\",
+                          \"title\":\"AWS Advanced Networking\",
+                          \"provider\":\"Amazon Web Services\",
+                          \"level\":\"advanced\",\"durationHours\":45,
+                          \"price\":329.00,\"currency\":\"EUR\",\"language\":\"es\",
+                          \"tags\":[\"aws\",\"networking\",\"vpc\",\"direct-connect\"],
+                          \"description\":\"Diseño de redes avanzadas en AWS.\",
+                          \"rating\":0.0,\"enrollments\":0,\"active\":true}"
+              }
+              """
+              # -- Parsear body -------------------------------------------
+              try:
+                  raw_body = event.get("body") or event
+                  if isinstance(raw_body, str):
+                      body = json.loads(raw_body)
+                  elif isinstance(raw_body, dict):
+                      body = raw_body
+                  else:
+                      return response(400, {"message": "Body inválido"})
+              except json.JSONDecodeError as e:
+                  return response(400, {"message": f"JSON malformado: {e}"})
+
+              # -- Validar campos obligatorios ----------------------------
+              missing = REQUIRED - body.keys()
+              if missing:
+                  return response(400, {
+                      "message": "Faltan campos obligatorios",
+                      "missing": list(missing)
+                  })
+
+              # -- Validar valores ----------------------------------------
+              if body["level"] not in VALID_LEVELS:
+                  return response(400, {
+                      "message": f"level inválido. Valores permitidos: {VALID_LEVELS}"
+                  })
+              if body["category"] not in VALID_CATEGORIES:
+                  return response(400, {
+                      "message": f"category inválida. Valores permitidos: {VALID_CATEGORIES}"
+                  })
+              if not isinstance(body["durationHours"], (int, float)) or body["durationHours"] <= 0:
+                  return response(400, {"message": "durationHours debe ser un número positivo"})
+              if not isinstance(body["price"], (int, float)) or body["price"] < 0:
+                  return response(400, {"message": "price debe ser un número no negativo"})
+
+              # -- Enriquecer el item ------------------------------------
+              body["createdAt"] = datetime.now(timezone.utc).isoformat()
+              body.setdefault("active", True)
+              body.setdefault("currency", "EUR")
+              body.setdefault("language", "es")
+              body.setdefault("rating", 0.0)
+              body.setdefault("enrollments", 0)
+              body.setdefault("tags", [])
+
+              # -- Guardar en DynamoDB -----------------------------------
+              try:
+                  item = float_to_decimal(body)
+                  table.put_item(Item=item)
+                  return response(201, {
+                      "message": "Curso insertado correctamente",
+                      "courseId": body["courseId"],
+                      "category": body["category"]
+                  })
+              except Exception as e:
+                  return response(500, {"message": "Error al guardar", "detail": str(e)})
+
+# =============================================================
+# OUTPUTS
+# =============================================================
+Outputs:
+  TableName:
+    Description: Nombre de la tabla DynamoDB
+    Value: !Ref CoursesTable
+    Export:
+      Name: !Sub "${AWS::StackName}-TableName"
+
+  TableArn:
+    Description: ARN de la tabla DynamoDB
+    Value: !GetAtt CoursesTable.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-TableArn"
+
+  GetCoursesFunctionArn:
+    Description: ARN de la función getCourses
+    Value: !GetAtt GetCoursesFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-GetCoursesArn"
+
+  InsertCourseFunctionArn:
+    Description: ARN de la función insertCourse
+    Value: !GetAtt InsertCourseFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-InsertCourseArn"
+
+  LambdaRoleArn:
+    Description: ARN del rol IAM compartido
+    Value: !GetAtt LambdaExecutionRole.Arn

@@ -1,0 +1,16 @@
+
+1. Crear un bucket de S3 cuyo nombre empiece con itera-bedrock-workshop-data
+2. Crear un usuario IAM con nombre "developer"
+3. Crear una Politica de IAM "developerPermissions" con los siguientes permisos:
+3.1. Permisos de Lectura total sobre el servicio Opensearch
+3.2. Permisos de Lectura total sobre el servicio S3
+3.3. Permisos de escritura sobre el bucket de S3 itera-bedrock-workshop-data
+3.4. Permisos para crear knowledge base (KB) en Bedrock y todas las operaciones relacionadas con la KB, como añadir sources y sincronizar
+3.5. Permiso para realizar  InvokeModelWithResponseStream con el FM Amazon Lite 2
+3.6. Permisos de lectura sobre Amazon Bedrock
+4. Adjuntar la politica de IAM "developerPermissions" al usuario "developer"
+5. Crear una coleccion Serverless de OpenSearch con nombre "bedrock-knowledge-base"
+6. Crear un indice con nombre bedrock-knowledge-base-index dentro de la colección "bedrock-knowledge-base". El indice tiene que tener un vector field con nombre "bedrock-knowledge-base-default-vector". El vector field contendrá tres metadatos:
+6.1. "id"  de tipo texto y filterable.
+6.2. "AMAZON_BEDROCK_METADATA" de tipo texto y filterable. 
+6.3. "AMAZON_BEDROCK_TEXT_CHUNK" de tipo texto y no filterable.

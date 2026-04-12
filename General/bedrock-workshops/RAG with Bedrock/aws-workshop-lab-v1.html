@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Generative AI Essentials on AWS – Lab: Enterprise Knowledge Assistant</title>
+  <link href="https://fonts.googleapis.com/css2?family=Amazon+Ember:wght@400;700&family=Source+Sans+3:wght@300;400;600;700&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --aws-navy: #232f3e;
+      --aws-orange: #ff9900;
+      --aws-orange-dark: #e88900;
+      --aws-light-bg: #f8f8f8;
+      --aws-white: #ffffff;
+      --aws-border: #d5dbdb;
+      --aws-text: #16191f;
+      --aws-text-secondary: #545b64;
+      --aws-link: #0073bb;
+      --aws-link-hover: #005276;
+      --aws-success: #1d8102;
+      --aws-sidebar-w: 280px;
+      --aws-topbar-h: 56px;
+      --aws-header-h: 52px;
+      --task-1: #ff9900;
+      --task-2: #7aa116;
+      --task-3: #0073bb;
+      --task-4: #8c4fff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Source Sans 3', 'Amazon Ember', sans-serif;
+      font-size: 15px;
+      color: var(--aws-text);
+      background: var(--aws-light-bg);
+    }
+
+    /* ── TOP BAR ── */
+    .topbar {
+      height: var(--aws-topbar-h);
+      background: var(--aws-navy);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      gap: 16px;
+    }
+
+    .topbar-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .topbar-logo svg { width: 40px; height: 24px; }
+
+    .topbar-brand {
+      color: var(--aws-white);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.3;
+      letter-spacing: 0.01em;
+    }
+
+    .topbar-brand span {
+      display: block;
+      color: var(--aws-orange);
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .topbar-title {
+      color: var(--aws-white);
+      font-size: 15px;
+      font-weight: 600;
+      margin-left: 12px;
+      border-left: 1px solid rgba(255,255,255,0.25);
+      padding-left: 16px;
+    }
+
+    /* ── SUB HEADER ── */
+    .subheader {
+      height: var(--aws-header-h);
+      background: var(--aws-white);
+      border-bottom: 1px solid var(--aws-border);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      position: fixed;
+      top: var(--aws-topbar-h);
+      left: 0; right: 0;
+      z-index: 99;
+    }
+
+    .subheader h1 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--aws-text);
+    }
+
+    /* ── LAYOUT ── */
+    .layout {
+      display: flex;
+      margin-top: calc(var(--aws-topbar-h) + var(--aws-header-h));
+      min-height: calc(100vh - var(--aws-topbar-h) - var(--aws-header-h));
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--aws-sidebar-w);
+      flex-shrink: 0;
+      background: var(--aws-white);
+      border-right: 1px solid var(--aws-border);
+      position: fixed;
+      top: calc(var(--aws-topbar-h) + var(--aws-header-h));
+      bottom: 0;
+      left: 0;
+      overflow-y: auto;
+      padding-bottom: 40px;
+    }
+
+    .sidebar-section {
+      padding: 20px 20px 0;
+    }
+
+    .sidebar-section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--aws-text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .sidebar-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .sidebar-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--aws-text-secondary);
+    }
+
+    .sidebar-meta-item svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      color: var(--aws-text-secondary);
+    }
+
+    .sidebar-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 12px 20px;
+      border-top: 1px solid var(--aws-border);
+    }
+
+    .sidebar-action-link {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--aws-link);
+      text-decoration: none;
+      padding: 4px 0;
+    }
+
+    .sidebar-action-link:hover { color: var(--aws-link-hover); text-decoration: underline; }
+
+    .nav-section {
+      padding: 16px 0 0;
+    }
+
+    .nav-section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--aws-text-secondary);
+      padding: 0 20px;
+      margin-bottom: 8px;
+    }
+
+    .nav-link {
+      display: block;
+      padding: 7px 20px;
+      font-size: 13px;
+      color: var(--aws-link);
+      text-decoration: none;
+      border-left: 3px solid transparent;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .nav-link:hover {
+      background: #f0f4f8;
+      border-left-color: var(--aws-orange);
+    }
+
+    .nav-link.active {
+      background: #fef6e7;
+      border-left-color: var(--aws-orange);
+      color: var(--aws-text);
+      font-weight: 600;
+    }
+
+    /* ── MAIN CONTENT ── */
+    .main {
+      margin-left: var(--aws-sidebar-w);
+      flex: 1;
+      padding: 0;
+    }
+
+    .content-area {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 40px 48px 80px;
+    }
+
+    /* ── LAB INTRO BANNER ── */
+    .lab-banner {
+      background: linear-gradient(135deg, var(--aws-navy) 0%, #1a2332 100%);
+      color: white;
+      padding: 32px 40px;
+      border-radius: 6px;
+      margin-bottom: 36px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .lab-banner::before {
+      content: '';
+      position: absolute;
+      right: -30px; top: -30px;
+      width: 180px; height: 180px;
+      border-radius: 50%;
+      background: rgba(255,153,0,0.12);
+    }
+
+    .lab-banner::after {
+      content: '';
+      position: absolute;
+      right: 60px; bottom: -40px;
+      width: 120px; height: 120px;
+      border-radius: 50%;
+      background: rgba(255,153,0,0.08);
+    }
+
+    .lab-banner-tag {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--aws-orange);
+      margin-bottom: 8px;
+    }
+
+    .lab-banner h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      position: relative;
+    }
+
+    .lab-banner p {
+      font-size: 14px;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.6;
+      max-width: 560px;
+    }
+
+    /* ── TASK CARDS ── */
+    .task {
+      margin-bottom: 40px;
+    }
+
+    .task-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 2px solid var(--aws-border);
+    }
+
+    .task-badge {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 800;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .task-1 .task-badge { background: var(--task-1); }
+    .task-2 .task-badge { background: var(--task-2); }
+    .task-3 .task-badge { background: var(--task-3); }
+    .task-4 .task-badge { background: var(--task-4); }
+
+    .task-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--aws-text);
+    }
+
+    /* ── STEPS ── */
+    .steps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .step {
+      display: flex;
+      gap: 16px;
+      padding: 14px 16px;
+      border-radius: 4px;
+      transition: background 0.15s;
+      align-items: flex-start;
+    }
+
+    .step:hover { background: #f5f8fc; }
+
+    .step-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--aws-navy);
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .task-1 .step-number { background: var(--task-1); }
+    .task-2 .step-number { background: var(--task-2); }
+    .task-3 .step-number { background: var(--task-3); }
+    .task-4 .step-number { background: var(--task-4); }
+
+    .step-body {
+      flex: 1;
+      font-size: 14px;
+      line-height: 1.65;
+      color: var(--aws-text);
+    }
+
+    .step-body code {
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12.5px;
+      background: #f0f3f6;
+      border: 1px solid #d0d7de;
+      border-radius: 3px;
+      padding: 1px 6px;
+      color: #0a3069;
+    }
+
+    .step-body .service-link {
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12.5px;
+      color: var(--aws-link);
+      background: #e8f3fb;
+      border: 1px solid #b3d4f0;
+      border-radius: 3px;
+      padding: 1px 6px;
+      text-decoration: none;
+    }
+
+    .step-body .btn-pill {
+      display: inline-block;
+      background: var(--aws-orange);
+      color: #111;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 2px 12px;
+      border-radius: 12px;
+      margin: 0 2px;
+    }
+
+    .step-body strong {
+      font-weight: 700;
+      color: var(--aws-text);
+    }
+
+    /* ── INFO BOX ── */
+    .info-box {
+      background: #f0f6ff;
+      border: 1px solid #b3d4f0;
+      border-left: 4px solid var(--aws-link);
+      border-radius: 4px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 13.5px;
+      color: #0a3069;
+      line-height: 1.6;
+    }
+
+    .info-box .info-title {
+      font-weight: 700;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .warning-box {
+      background: #fff8e6;
+      border: 1px solid #ffc84a;
+      border-left: 4px solid var(--aws-orange);
+      border-radius: 4px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 13.5px;
+      color: #6b4c00;
+      line-height: 1.6;
+    }
+
+    .warning-box .info-title {
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .success-box {
+      background: #edf7ed;
+      border: 1px solid #a5d6a7;
+      border-left: 4px solid var(--aws-success);
+      border-radius: 4px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 13.5px;
+      color: #1b5e20;
+      line-height: 1.6;
+    }
+
+    /* ── SECTION DIVIDER ── */
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--aws-border);
+      margin: 36px 0;
+    }
+
+    /* ── CONCLUSION ── */
+    .conclusion {
+      background: linear-gradient(135deg, #f0f6e8 0%, #e8f3ed 100%);
+      border: 1px solid #a5d6a7;
+      border-radius: 6px;
+      padding: 28px 32px;
+      margin-top: 40px;
+    }
+
+    .conclusion-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #1d5c1a;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .conclusion p {
+      font-size: 14px;
+      color: #2d5a29;
+      line-height: 1.7;
+    }
+
+    /* ── PROGRESS BAR ── */
+    .progress-wrap {
+      padding: 16px 20px;
+      border-top: 1px solid var(--aws-border);
+    }
+
+    .progress-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--aws-text-secondary);
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .progress-bar-bg {
+      background: #e0e3e8;
+      border-radius: 4px;
+      height: 6px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--aws-orange);
+      border-radius: 4px;
+      width: 0%;
+      transition: width 0.6s ease;
+    }
+
+    /* ── CHECKBOX STEPS ── */
+    .step-check {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #ccc;
+      border-radius: 3px;
+      margin-top: 5px;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .step-check.checked {
+      background: var(--aws-success);
+      border-color: var(--aws-success);
+    }
+
+    .step-check.checked::after {
+      content: '';
+      position: absolute;
+      left: 3px; top: 1px;
+      width: 8px; height: 4px;
+      border-left: 2px solid white;
+      border-bottom: 2px solid white;
+      transform: rotate(-45deg);
+    }
+
+    /* scrollbar */
+    .sidebar::-webkit-scrollbar { width: 5px; }
+    .sidebar::-webkit-scrollbar-track { background: transparent; }
+    .sidebar::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <a class="topbar-logo" href="#">
+      <!-- AWS Logo SVG -->
+      <svg viewBox="0 0 60 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16.8 22.6l-2.7-9.4h-1.8L9.6 22.6l-2.6-9.4H5l3.6 12.2h1.9l2.7-9.1 2.7 9.1h1.9l3.6-12.2h-1.9l-2.7 9.4zM28.5 13.2c-3.4 0-5.8 2.5-5.8 6.2s2.4 6.2 5.8 6.2 5.8-2.5 5.8-6.2-2.4-6.2-5.8-6.2zm0 10.6c-2.2 0-3.8-1.7-3.8-4.4s1.6-4.4 3.8-4.4 3.8 1.7 3.8 4.4-1.6 4.4-3.8 4.4zM46.4 13.2l-2.9 9-2.9-9h-2l3.9 12.2h2l3.9-12.2h-2z" fill="#FF9900"/>
+        <path d="M7.5 30.5C12.3 33.8 18.1 35.7 24.3 35.7c8.6 0 16.2-3.5 21.8-9.1.5-.5.1-1.1-.5-.8C39.3 28.9 32.1 31 24.5 31c-6.2 0-12-1.5-17.1-4.1-.6-.3-1 .3-.5.7l.6.9z" fill="#FF9900"/>
+        <path d="M49.5 27.5c.7.9 1.6.5 1.5-.5-.2-1.5-1.1-4.9-2.3-6.3-.3-.4-.8-.2-.8.3 0 .3.1 2.8.1 4.2s-.5 2-1.1 2.2c-.6.2-.9.8-.3 1.2l2.9-.1z" fill="#FF9900"/>
+      </svg>
+    </a>
+    <div class="topbar-brand">
+      AWS Training and Certification
+      <span>Workshop Lab</span>
+    </div>
+    <div class="topbar-title">Generative AI Essentials on AWS – Lab: Enterprise Knowledge Assistant</div>
+  </header>
+
+  <!-- SUB HEADER -->
+  <div class="subheader">
+    <h1>LAB: Create an Enterprise Knowledge Assistant</h1>
+  </div>
+
+  <!-- LAYOUT -->
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Lab Information</div>
+        <div class="sidebar-meta">
+          <div class="sidebar-meta-item">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+            </svg>
+            Expira hoy a las 22:02
+          </div>
+          <div class="sidebar-meta-item">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+            </svg>
+            60 minutos
+          </div>
+          <div class="sidebar-meta-item">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+            </svg>
+            <a href="#" class="sidebar-action-link" style="padding:0;">Idiomas disponibles</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-actions">
+        <a href="#" class="sidebar-action-link">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          Feedback ▾
+        </a>
+        <a href="#" class="sidebar-action-link">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Novedades
+        </a>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress-wrap">
+        <div class="progress-label">
+          <span>Progreso</span>
+          <span id="progress-pct">0%</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progress-fill"></div>
+        </div>
+      </div>
+
+      <!-- Nav -->
+      <div class="nav-section">
+        <div class="nav-section-title">Lab Content</div>
+        <a href="#overview" class="nav-link">Descripción general</a>
+        <a href="#task1" class="nav-link active">Tarea 1: Examina los datos existentes</a>
+        <a href="#task2" class="nav-link">Tarea 2: Examina el Vector Store</a>
+        <a href="#task3" class="nav-link">Tarea 3: Crear la Knowledge Base</a>
+        <a href="#task4" class="nav-link">Tarea 4: Probar RAG</a>
+        <a href="#conclusion" class="nav-link">Conclusiones</a>
+      </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+      <div class="content-area">
+
+        <!-- LAB BANNER -->
+        <div class="lab-banner" id="overview">
+          <div class="lab-banner-tag">AWS Bedrock · RAG · OpenSearch</div>
+          <h2>Create an Enterprise Knowledge Assistant</h2>
+          <p>En este laboratorio aprenderás a crear una Knowledge Base en Amazon Bedrock para implementar Retrieval-Augmented Generation (RAG), conectando datos de S3 con un vector store en OpenSearch Serverless.</p>
+        </div>
+
+        <!-- ═══ TAREA 1 ═══ -->
+        <section class="task task-1" id="task1">
+          <div class="task-header">
+            <div class="task-badge">1</div>
+            <h2 class="task-title">Tarea 1: Examina los datos existentes de la empresa</h2>
+          </div>
+          <div class="steps-list">
+
+            <div class="step">
+              <div class="step-number">1</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Abre la consola de AWS y en la barra de búsqueda de servicios accede a <a class="service-link" href="#">S3</a>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">2</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la consola del Servicio de S3, busca el bucket con nombre <code>itera-bedrock-workshop-data-xxxx</code>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">3</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Abre uno de los ficheros para ver la estructura del mismo. Observarás que contiene información sobre <strong>ventas de los productos</strong>.
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <hr class="section-divider"/>
+
+        <!-- ═══ TAREA 2 ═══ -->
+        <section class="task task-2" id="task2">
+          <div class="task-header">
+            <div class="task-badge">2</div>
+            <h2 class="task-title">Tarea 2: Examina el Vector Store existente</h2>
+          </div>
+          <div class="steps-list">
+
+            <div class="step">
+              <div class="step-number">4</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el cuadro de búsqueda de la barra de navegación superior, escribe <code>opensearch</code>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">5</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En los resultados de la búsqueda, en la sección <strong>Servicios</strong>, haz clic en <a class="service-link" href="#">Amazon OpenSearch Service</a>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">6</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En los resultados de la búsqueda, en la sección <strong>Servicios</strong>, confirma la selección de <a class="service-link" href="#">Amazon OpenSearch Service</a>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">7</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el panel de navegación izquierdo, debajo de <strong>"Sin servidor"</strong>, haz clic en <strong>"Colecciones"</strong>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">8</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la sección <strong>Colecciones</strong>, haz clic en la colección <code>bedrock-knowledge-base</code>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">9</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la pestaña <strong>Overview</strong>, debajo de <em>ARN de la colección</em>, haz clic en el icono de copiar para copiar el ARN proporcionado y luego pégalo en el editor de texto de tu dispositivo. <strong>Necesitarás este ARN en un paso posterior.</strong>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">10</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Haz clic en la pestaña <strong>Índices</strong>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">11</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Haz clic en <code>bedrock-knowledge-base-index</code>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">12</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el apartado <strong>Nombre del índice</strong>, revisa el índice creado y copia el nombre.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">13</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la sección <strong>Campos vectoriales</strong>, revisa el nombre del campo vectorial creado.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">14</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Revisa las demás configuraciones asociadas al índice vectorial.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">15</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la sección <strong>Metadatos</strong>, revisa los campos de asignación.
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <hr class="section-divider"/>
+
+        <!-- ═══ TAREA 3 ═══ -->
+        <section class="task task-3" id="task3">
+          <div class="task-header">
+            <div class="task-badge">3</div>
+            <h2 class="task-title">Tarea 3: Crear la Knowledge Base en Bedrock para implementar RAG</h2>
+          </div>
+          <div class="steps-list">
+
+            <div class="step">
+              <div class="step-number">16</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el cuadro de búsqueda de la barra de navegación superior, escribe <code>bedrock</code>. En los resultados, haz clic en <a class="service-link" href="#">Amazon Bedrock</a>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">17</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el panel de navegación izquierdo, desplázate hacia abajo hasta <strong>"Crear"</strong> y haz clic en <strong>"Bases de conocimiento"</strong>. Revisa la información sobre las bases de conocimiento.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">18</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la sección <strong>Bases de conocimiento</strong>, haz clic en <span class="btn-pill">Crear</span> para expandir el menú. Elige <strong>Base de conocimiento con almacén de vectores</strong>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">19</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el paso <em>"Proporcionar detalles de la base de conocimientos"</em>, escribe el nombre: <code>sales-kb</code>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">20</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En <strong>"Rol de ejecución"</strong>, selecciona <strong>"Usar un rol de servicio existente"</strong>. En la lista desplegable, selecciona <code>Bedrock_KB_Role</code>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">21</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Revisa los distintos tipos de fuentes de datos compatibles. En <strong>"Elegir tipo de fuente de datos"</strong>, selecciona <strong>Amazon S3</strong>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">22</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Desplázate hasta el final de la página y haz clic en <span class="btn-pill">Siguiente</span>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">23</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el paso <em>"Configurar origen de datos"</em>, en <strong>"Nombre del origen de datos"</strong>, escribe: <code>s3-sales-data</code>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">24</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En <strong>"URI de S3"</strong>, haz clic en <span class="btn-pill">Explorar S3</span>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">25</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la ventana emergente, selecciona el bucket de S3 <code>sales-data</code> y confirma que la URI de S3 seleccionada sea similar al ejemplo de la captura de pantalla.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">26</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En <strong>"Estrategia de análisis"</strong>, mantén la opción predeterminada <code>Amazon Bedrock default parser</code>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">27</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Para la <strong>estrategia de segmentación</strong>, selecciona <strong>Segmentación predeterminada</strong>. Haz clic en <span class="btn-pill">Siguiente</span>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">28</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el paso <em>"Configurar el almacenamiento y procesamiento de datos"</em>, para el modelo <strong>"Incrustaciones"</strong>, haz clic en <span class="btn-pill">Seleccionar modelo</span>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">29</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la ventana emergente, en <strong>Modelos</strong>, selecciona <strong>Titan Text Embeddings V2</strong>. Haz clic en <span class="btn-pill">Aplicar</span>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">30</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Confirma que el modelo de incrustaciones seleccionado coincide con el ejemplo de la captura de pantalla.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">31</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En <strong>Configuraciones adicionales</strong> → <em>Tipo de incrustaciones</em>, selecciona <strong>Incrustaciones vectoriales de punto flotante</strong>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">32</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En <strong>Dimensiones del vector</strong>, mantén el valor predeterminado de <code>1024</code>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">33</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Para el <strong>método de creación del almacén de vectores</strong>, selecciona <strong>"Usar un almacén de vectores existente"</strong>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">34</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Para el <strong>tipo de almacén de vectores</strong>, selecciona <strong>"OpenSearch Serverless"</strong>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">35</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Para el <strong>ARN de la colección</strong>, pega el ARN que copiaste en el paso 9.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">36</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Para el <strong>nombre del índice de vectores</strong>, escribe: <code>bedrock-knowledge-base-index</code>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">37</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Para el <strong>nombre del campo Vector</strong>, escribe: <code>bedrock-knowledge-base-default-vector</code>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">38</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Para el <strong>nombre del campo Texto</strong>, escribe: <code>AMAZON_BEDROCK_TEXT_CHUNK</code>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">39</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Para el <strong>nombre del campo de metadatos gestionado por Bedrock</strong>, escribe: <code>AMAZON_BEDROCK_METADATA</code>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">40</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Haz clic en <span class="btn-pill">Siguiente</span>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">41</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el paso <em>"Revisar y crear"</em>, revisa las opciones seleccionadas.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">42</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la parte inferior de la página, haz clic en <span class="btn-pill">Crear base de conocimientos</span>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">43</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la alerta informativa, revisa el mensaje: <em>"The vector database might take up to 5 minutes to fully configure in OpenSearch Serverless."</em>
+              </div>
+            </div>
+
+            <div class="info-box">
+              <div class="info-title">⏱ Tiempo de espera</div>
+              En <strong>Estado</strong>, revisa para confirmar que el estado cambia a <strong>Disponible</strong>. La base de conocimientos puede tardar hasta 5 minutos en crearse. Espera a que aparezca Disponible antes de continuar.
+            </div>
+
+            <div class="step">
+              <div class="step-number">44</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En <strong>Estado</strong>, confirma que el estado cambia a <strong>Disponible</strong>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">45</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la sección <strong>Origen de datos</strong>, marca la casilla para seleccionar <code>s3-sales-data</code>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">46</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Haz clic en <span class="btn-pill">Sincronizar</span>. La sincronización puede tardar un par de minutos en completarse.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">47</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la <strong>alerta de éxito</strong>, revisa el mensaje.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">48</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Comprueba que puedes hacer clic en <strong>Agregar</strong> para añadir más orígenes de datos a la base de conocimientos.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">49</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Haz clic en el origen de datos <code>s3-sales-data</code>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">50</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En las secciones <strong>Historial de sincronización</strong> y <strong>Documentos</strong>, revisa los detalles de la sincronización completada y los documentos que se importaron correctamente.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">51</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En <strong>Archivos de origen</strong>, verifica que se hayan importado <strong>100 archivos</strong>. Si se importaron menos de 100, puede que debas volver a sincronizar la fuente de datos.
+              </div>
+            </div>
+
+            <div class="warning-box">
+              <div class="info-title">⚠ Verificación importante</div>
+              Si se importaron menos de 100 archivos, es posible que debas <strong>volver a sincronizar</strong> la fuente de datos para procesar los archivos que se omitieron.
+            </div>
+
+          </div>
+        </section>
+
+        <hr class="section-divider"/>
+
+        <!-- ═══ TAREA 4 ═══ -->
+        <section class="task task-4" id="task4">
+          <div class="task-header">
+            <div class="task-badge">4</div>
+            <h2 class="task-title">Tarea 4: Probar RAG con un Modelo Fundacional</h2>
+          </div>
+          <div class="steps-list">
+
+            <div class="step">
+              <div class="step-number">52</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el panel de navegación izquierdo, haz clic en <strong>Bases de conocimiento</strong>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">53</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la sección <strong>Knowledge Bases</strong>, selecciona el botón de opción para elegir <code>sales-kb</code>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">54</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Haz clic en <span class="btn-pill">Test Knowledge Base</span>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">55</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el panel de configuraciones, haz clic en <span class="btn-pill">Seleccionar modelo</span>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">56</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la ventana emergente, para <strong>proveedores de modelos sin servidor</strong>, selecciona <strong>Amazon</strong>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">57</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Para <strong>modelos con acceso</strong>, selecciona <a class="service-link" href="#">Nova Lite</a>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">58</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Haz clic en <span class="btn-pill">Aplicar</span>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">59</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el cuadro de texto del panel de prueba, escribe una pregunta relacionada con las ventas, como por ejemplo:
+                <br/><br/>
+                <code>¿Qué ProductId tuvo las ventas más bajas en el primer trimestre?</code>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">60</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Haz clic en el icono <strong>Enviar</strong>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">61</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Revisa la respuesta. El modelo <strong>Nova Lite</strong> consultó la base de conocimientos y obtuvo el producto con las ventas más bajas en el primer trimestre.
+              </div>
+            </div>
+
+            <div class="success-box">
+              ✅ <strong>¡Excelente!</strong> Has probado exitosamente RAG con un modelo fundacional de Amazon Bedrock.
+            </div>
+
+          </div>
+        </section>
+
+        <hr class="section-divider"/>
+
+        <!-- ═══ CONCLUSIÓN ═══ -->
+        <section class="conclusion" id="conclusion">
+          <div class="conclusion-title">
+            🎓 Conclusiones
+          </div>
+          <p>
+            En este laboratorio, has aprendido a <strong>crear una Knowledge Base en Bedrock para implementar RAG</strong>.
+            Conectaste datos de ventas almacenados en Amazon S3 con un vector store en <strong>OpenSearch Serverless</strong>,
+            configuraste un modelo de embeddings con <strong>Titan Text Embeddings V2</strong> y probaste consultas
+            en lenguaje natural usando el modelo fundacional <strong>Nova Lite</strong> de Amazon.
+          </p>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Checkbox progress tracking
+    const TOTAL_STEPS = 61;
+    let checked = 0;
+
+    function toggleCheck(el) {
+      el.classList.toggle('checked');
+      checked = document.querySelectorAll('.step-check.checked').length;
+      const pct = Math.round((checked / TOTAL_STEPS) * 100);
+      document.getElementById('progress-fill').style.width = pct + '%';
+      document.getElementById('progress-pct').textContent = pct + '%';
+    }
+
+    // Sidebar active link on scroll
+    const sections = document.querySelectorAll('section[id], div[id]');
+    const navLinks = document.querySelectorAll('.nav-link');
+
+    window.addEventListener('scroll', () => {
+      let current = '';
+      sections.forEach(sec => {
+        const top = sec.getBoundingClientRect().top;
+        if (top < 160) current = sec.id;
+      });
+      navLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + current) {
+          link.classList.add('active');
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,1674 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Generative AI Essentials on AWS – Lab: Create an E-Commerce Bot</title>
+  <link href="https://fonts.googleapis.com/css2?family=Amazon+Ember:wght@400;700&family=Source+Sans+3:wght@300;400;600;700&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --aws-navy: #232f3e;
+      --aws-orange: #ff9900;
+      --aws-orange-dark: #e88900;
+      --aws-light-bg: #f8f8f8;
+      --aws-white: #ffffff;
+      --aws-border: #d5dbdb;
+      --aws-text: #16191f;
+      --aws-text-secondary: #545b64;
+      --aws-link: #0073bb;
+      --aws-link-hover: #005276;
+      --aws-success: #1d8102;
+      --aws-sidebar-w: 280px;
+      --aws-topbar-h: 70px;
+      --aws-header-h: 52px;
+      --task-1: #ff9900;
+      --task-2: #7aa116;
+      --task-3: #0073bb;
+      --task-4: #8c4fff;
+      --task-5: #e91e8c;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Source Sans 3', 'Amazon Ember', sans-serif;
+      font-size: 15px;
+      color: var(--aws-text);
+      background: var(--aws-light-bg);
+    }
+
+    /* ── TOP BAR ── */
+    .topbar {
+      height: var(--aws-topbar-h);
+      background: var(--aws-navy);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      gap: 16px;
+    }
+
+    .topbar-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .topbar-logo img { height: 36px; width: auto; }
+
+    .topbar-brand {
+      color: var(--aws-white);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.3;
+      letter-spacing: 0.01em;
+    }
+
+    .topbar-brand span {
+      display: block;
+      color: var(--aws-orange);
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .topbar-title {
+      color: var(--aws-white);
+      font-size: 15px;
+      font-weight: 600;
+      margin-left: 12px;
+      border-left: 1px solid rgba(255,255,255,0.25);
+      padding-left: 16px;
+    }
+
+    /* ── SUB HEADER ── */
+    .subheader {
+      height: var(--aws-header-h);
+      background: var(--aws-white);
+      border-bottom: 1px solid var(--aws-border);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      position: fixed;
+      top: var(--aws-topbar-h);
+      left: 0; right: 0;
+      z-index: 99;
+    }
+
+    .subheader h1 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--aws-text);
+    }
+
+    /* ── LAYOUT ── */
+    .layout {
+      display: flex;
+      margin-top: calc(var(--aws-topbar-h) + var(--aws-header-h));
+      min-height: calc(100vh - var(--aws-topbar-h) - var(--aws-header-h));
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--aws-sidebar-w);
+      flex-shrink: 0;
+      background: var(--aws-white);
+      border-right: 1px solid var(--aws-border);
+      position: fixed;
+      top: calc(var(--aws-topbar-h) + var(--aws-header-h));
+      bottom: 0;
+      left: 0;
+      overflow-y: auto;
+      padding-bottom: 40px;
+    }
+
+    .sidebar-section {
+      padding: 20px 20px 0;
+    }
+
+    .sidebar-section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--aws-text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .sidebar-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .sidebar-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--aws-text-secondary);
+    }
+
+    .sidebar-meta-item svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      color: var(--aws-text-secondary);
+    }
+
+    .nav-section {
+      padding: 16px 0 0;
+    }
+
+    .nav-section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--aws-text-secondary);
+      padding: 0 20px;
+      margin-bottom: 8px;
+    }
+
+    .nav-link {
+      display: block;
+      padding: 7px 20px;
+      font-size: 13px;
+      color: var(--aws-link);
+      text-decoration: none;
+      border-left: 3px solid transparent;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .nav-link:hover {
+      background: #f0f4f8;
+      border-left-color: var(--aws-orange);
+    }
+
+    .nav-link.active {
+      background: #fef6e7;
+      border-left-color: var(--aws-orange);
+      color: var(--aws-text);
+      font-weight: 600;
+    }
+
+    /* ── PROGRESS BAR ── */
+    .progress-wrap {
+      padding: 16px 20px;
+      border-top: 1px solid var(--aws-border);
+    }
+
+    .progress-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--aws-text-secondary);
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .progress-bar-bg {
+      background: #e0e3e8;
+      border-radius: 4px;
+      height: 6px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--aws-orange);
+      border-radius: 4px;
+      width: 0%;
+      transition: width 0.6s ease;
+    }
+
+    /* ── MAIN CONTENT ── */
+    .main {
+      margin-left: var(--aws-sidebar-w);
+      flex: 1;
+      padding: 0;
+    }
+
+    .content-area {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 40px 10px 80px;
+    }
+
+    /* ── LAB INTRO BANNER ── */
+    .lab-banner {
+      background: linear-gradient(135deg, var(--aws-navy) 0%, #1a2332 100%);
+      color: white;
+      padding: 32px 40px;
+      border-radius: 6px;
+      margin-bottom: 36px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .lab-banner::before {
+      content: '';
+      position: absolute;
+      right: -30px; top: -30px;
+      width: 180px; height: 180px;
+      border-radius: 50%;
+      background: rgba(255,153,0,0.12);
+    }
+
+    .lab-banner::after {
+      content: '';
+      position: absolute;
+      right: 60px; bottom: -40px;
+      width: 120px; height: 120px;
+      border-radius: 50%;
+      background: rgba(255,153,0,0.08);
+    }
+
+    .lab-banner-tag {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--aws-orange);
+      margin-bottom: 8px;
+    }
+
+    .lab-banner h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      position: relative;
+    }
+
+    .lab-banner p {
+      font-size: 14px;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.6;
+      max-width: 560px;
+    }
+
+    /* ── TASK CARDS ── */
+    .task { margin-bottom: 40px; }
+
+    .task-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 2px solid var(--aws-border);
+    }
+
+    .task-badge {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 800;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .task-1 .task-badge { background: var(--task-1); }
+    .task-2 .task-badge { background: var(--task-2); }
+    .task-3 .task-badge { background: var(--task-3); }
+    .task-4 .task-badge { background: var(--task-4); }
+    .task-5 .task-badge { background: var(--task-5); }
+
+    .task-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--aws-text);
+    }
+
+    /* ── STEPS ── */
+    .steps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .step {
+      display: flex;
+      gap: 16px;
+      padding: 14px 16px;
+      border-radius: 4px;
+      transition: background 0.15s;
+      align-items: flex-start;
+    }
+
+    .step:hover { background: #f5f8fc; }
+
+    .step-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--aws-navy);
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .task-1 .step-number { background: var(--task-1); }
+    .task-2 .step-number { background: var(--task-2); }
+    .task-3 .step-number { background: var(--task-3); }
+    .task-4 .step-number { background: var(--task-4); }
+    .task-5 .step-number { background: var(--task-5); }
+
+    .step-body {
+      flex: 1;
+      font-size: 14px;
+      line-height: 1.65;
+      color: var(--aws-text);
+    }
+
+    .step-body code {
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12.5px;
+      background: #f0f3f6;
+      border: 1px solid #d0d7de;
+      border-radius: 3px;
+      padding: 1px 6px;
+      color: #0a3069;
+    }
+
+    .step-body .service-link {
+      font-family: 'Source Code Pro', monospace;
+      font-size: 12.5px;
+      color: var(--aws-link);
+      background: #e8f3fb;
+      border: 1px solid #b3d4f0;
+      border-radius: 3px;
+      padding: 1px 6px;
+      text-decoration: none;
+    }
+
+    .step-body .btn-pill {
+      display: inline-block;
+      background: var(--aws-orange);
+      color: #111;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 2px 12px;
+      border-radius: 12px;
+      margin: 0 2px;
+    }
+
+    .step-body strong {
+      font-weight: 700;
+      color: var(--aws-text);
+    }
+
+    /* ── INFO / WARNING / SUCCESS BOXES ── */
+    .info-box {
+      background: #f0f6ff;
+      border: 1px solid #b3d4f0;
+      border-left: 4px solid var(--aws-link);
+      border-radius: 4px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 13.5px;
+      color: #0a3069;
+      line-height: 1.6;
+    }
+
+    .info-box .info-title {
+      font-weight: 700;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .warning-box {
+      background: #fff8e6;
+      border: 1px solid #ffc84a;
+      border-left: 4px solid var(--aws-orange);
+      border-radius: 4px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 13.5px;
+      color: #6b4c00;
+      line-height: 1.6;
+    }
+
+    .warning-box .info-title {
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .success-box {
+      background: #edf7ed;
+      border: 1px solid #a5d6a7;
+      border-left: 4px solid var(--aws-success);
+      border-radius: 4px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 13.5px;
+      color: #1b5e20;
+      line-height: 1.6;
+    }
+
+    /* ── SECTION DIVIDER ── */
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--aws-border);
+      margin: 36px 0;
+    }
+
+    /* ── STEP IMAGE SLOT ── */
+    .step-image-slot {
+      margin: 10px 0 4px 62px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--aws-border);
+      background: #f8f9fb;
+    }
+
+    .step-image-slot img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 5px;
+    }
+
+    .step-image-placeholder {
+      margin: 10px 0 4px 62px;
+      border: 2px dashed #c5cdd6;
+      border-radius: 6px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #8a95a3;
+      font-size: 12.5px;
+      background: #f8f9fb;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .step-image-placeholder:hover {
+      border-color: var(--aws-orange);
+      background: #fff9ef;
+      color: #cc7a00;
+    }
+
+    /* ── CODE BLOCK WITH COPY ── */
+    .code-block-wrap {
+      margin: 12px 0 4px 62px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid #d0d7de;
+      background: #1e2330;
+    }
+
+    .code-block-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px;
+      background: #161b27;
+      border-bottom: 1px solid #2d3548;
+    }
+
+    .code-block-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #8b96a8;
+    }
+
+    .copy-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: transparent;
+      border: 1px solid #3a4460;
+      border-radius: 4px;
+      color: #8b96a8;
+      font-size: 12px;
+      font-family: 'Source Sans 3', sans-serif;
+      cursor: pointer;
+      padding: 3px 10px;
+      transition: all 0.18s;
+    }
+
+    .copy-btn:hover {
+      background: #2a3248;
+      border-color: var(--aws-orange);
+      color: var(--aws-orange);
+    }
+
+    .copy-btn.copied {
+      background: #1a3a1a;
+      border-color: #4caf50;
+      color: #4caf50;
+    }
+
+    .copy-btn svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .code-block-body {
+      padding: 16px 18px;
+      overflow-x: auto;
+    }
+
+    .code-block-body pre {
+      margin: 0;
+      font-family: 'Source Code Pro', 'Courier New', monospace;
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: #c9d1d9;
+      white-space: pre;
+    }
+
+    /* ── CONCLUSION ── */
+    .conclusion {
+      background: linear-gradient(135deg, #f0f6e8 0%, #e8f3ed 100%);
+      border: 1px solid #a5d6a7;
+      border-radius: 6px;
+      padding: 28px 32px;
+      margin-top: 40px;
+    }
+
+    .conclusion-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #1d5c1a;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .conclusion p {
+      font-size: 14px;
+      color: #2d5a29;
+      line-height: 1.7;
+    }
+
+    /* ── CHECKBOX STEPS ── */
+    .step-check {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #ccc;
+      border-radius: 3px;
+      margin-top: 5px;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .step-check.checked {
+      background: var(--aws-success);
+      border-color: var(--aws-success);
+    }
+
+    .step-check.checked::after {
+      content: '';
+      position: absolute;
+      left: 3px; top: 1px;
+      width: 8px; height: 4px;
+      border-left: 2px solid white;
+      border-bottom: 2px solid white;
+      transform: rotate(-45deg);
+    }
+
+    /* scrollbar */
+    .sidebar::-webkit-scrollbar { width: 5px; }
+    .sidebar::-webkit-scrollbar-track { background: transparent; }
+    .sidebar::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+    /* challenge badge */
+    .task-challenge .task-badge { background: #e91e8c; }
+    .task-challenge .step-number { background: #e91e8c; }
+  </style>
+</head>
+<body>
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <a class="topbar-logo" href="#">
+      <img src="./img/logo_itera.webp" alt="Itera" />
+    </a>
+    <div class="topbar-brand">
+      AWS Training and Certification
+      <span>Workshop Lab</span>
+    </div>
+    <div class="topbar-title">Generative AI Essentials on AWS – Lab: Create an E-Commerce Bot</div>
+  </header>
+
+  <!-- SUB HEADER -->
+  <div class="subheader">
+    <h1>LAB: Create an E-Commerce Bot</h1>
+  </div>
+
+  <!-- LAYOUT -->
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Lab Information</div>
+        <div class="sidebar-meta">
+          <div class="sidebar-meta-item">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+            </svg>
+            60 minutos
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress-wrap">
+        <div class="progress-label">
+          <span>Progreso</span>
+          <span id="progress-pct">0%</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progress-fill"></div>
+        </div>
+      </div>
+
+      <!-- Nav -->
+      <div class="nav-section">
+        <div class="nav-section-title">Lab Content</div>
+        <a href="#overview" class="nav-link">Descripción general</a>
+        <a href="#task1" class="nav-link active">Tarea 1: Catálogo de Productos</a>
+        <a href="#task2" class="nav-link">Tarea 2: Examina las Funciones Lambda</a>
+        <a href="#task3" class="nav-link">Tarea 3: Creando el Agente</a>
+        <a href="#task3test" class="nav-link">Tarea 3: Prueba el Agente</a>
+        <a href="#task4" class="nav-link">Tarea 4: Más funcionalidades</a>
+        <a href="#challenge" class="nav-link">Challenge: Completa el Agente</a>
+        <a href="#conclusion" class="nav-link">Conclusiones</a>
+      </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+      <div class="content-area">
+
+        <!-- LAB BANNER -->
+        <div class="lab-banner" id="overview">
+          <div class="lab-banner-tag">Amazon Bedrock · Agents · DynamoDB · Lambda</div>
+          <h2>Create an E-Commerce Bot</h2>
+          <p>En este laboratorio aprenderás a crear un Agente de recomendación de productos en Amazon Bedrock, conectando Lambdas como Action Groups para interactuar con un catálogo de productos en DynamoDB y gestionar un carrito de compra.</p>
+        </div>
+
+        <!-- ═══ TAREA 1 ═══ -->
+        <section class="task task-1" id="task1">
+          <div class="task-header">
+            <div class="task-badge">1</div>
+            <h2 class="task-title">Tarea 1: Examina el catálogo de Productos</h2>
+          </div>
+          <div class="steps-list">
+           <div class="warning-box">
+              <div class="info-title">⚠ Verificación importante</div>
+              Asegurate que estas en la región <strong>N. Virgina - US-EAST-1</strong> antes de comenzar con los pasos
+            </div>
+            
+            <div class="step-image-slot"><img src="./img/region.png" alt="Region US-EAST-1" /></div>
+            
+            <div class="step">
+              <div class="step-number">1</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Abre la consola de AWS y en la barra de búsqueda de servicios introduce <a class="service-link" href="#">DynamoDB</a>. En los resultados de la búsqueda, en la sección <strong>Servicios</strong>, haz clic en <strong>DynamoDB</strong>.
+              </div>
+            </div>
+
+            <div class="step-image-slot"><img src="./img/step1.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">2</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la consola de DynamoDB, haz clic en <strong>Tables</strong> en el menú izquierdo y a continuación haz clic en la tabla con nombre <code>workshop-Products-XXX</code>.
+              </div>
+            </div>
+
+            <div class="step-image-slot"><img src="./img/step2.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">3</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Una vez se carguen los detalles de la tabla, haz clic en <span class="btn-pill">Explore Table Items</span>.
+              </div>
+            </div>
+            <div class="step-image-slot"><img src="./img/step3.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">4</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Asegúrate de que está seleccionada la opción <strong>Scan</strong> en el apartado <em>Scan or query Items</em> y a continuación haz clic en <span class="btn-pill">Run</span>.
+              </div>
+            </div>
+            <div class="step-image-slot"><img src="./img/step4.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">5</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el apartado inferior podrás ver todos los elementos de la tabla Productos. Verás que cada uno de ellos tiene una <strong>categoría</strong>, una <strong>ocasión</strong> en donde se puede regalar el producto, para qué <strong>género</strong> está orientado el producto y una <strong>descripción</strong>.
+              </div>
+            </div>
+            <div class="step-image-slot"><img src="./img/step5.png" alt="" /></div>
+
+          </div>
+        </section>
+
+        <hr class="section-divider"/>
+
+        <!-- ═══ TAREA 2 ═══ -->
+        <section class="task task-2" id="task2">
+          <div class="task-header">
+            <div class="task-badge">2</div>
+            <h2 class="task-title">Tarea 2: Examina las Funciones Lambda</h2>
+          </div>
+          <div class="steps-list">
+
+            <div class="step">
+              <div class="step-number">6</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la barra de búsqueda de servicios introduce <a class="service-link" href="#">Lambda</a>. En los resultados de la búsqueda, en la sección <strong>Servicios</strong>, haz clic en <strong>Lambda</strong>.
+              </div>
+            </div>
+            <div class="step-image-slot"><img src="./img/step6.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">7</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Verás en la página de <strong>Functions</strong> que existen funciones Lambda creadas. Las que vamos a utilizar en este workshop <strong>son sólo 3</strong>, cada una de ellas realiza una funcionalidad:
+                <br></br>Añadir items al carrito de compra (<code>workshop-AddToCartFunction</code>)
+                <br></br>Obtener el estado del carrito (<code>workshop-getCartFunction</code>)
+                <br></br>Obtener detalles del producto (<code>workshop-getProductDetailsFunction</code>) 
+              </div>
+            </div>
+
+            <div class="step-image-slot"><img src="./img/step7.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">8</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Si lo deseas, puedes acceder a cualquiera de las funciones para ver el código. Para ello haz clic en el nombre de la función; esto te llevará a la página de detalle donde podrás consultar el código fuente.
+              </div>
+            </div>
+
+            <div class="step-image-slot"><img src="./img/step8.png" alt="" /></div>
+
+          </div>
+        </section>
+
+        <hr class="section-divider"/>
+
+        <!-- ═══ TAREA 3 – CREANDO EL AGENTE ═══ -->
+        <section class="task task-3" id="task3">
+          <div class="task-header">
+            <div class="task-badge">3</div>
+            <h2 class="task-title">Tarea 3: Creando el Agente</h2>
+          </div>
+          <div class="steps-list">
+
+            <div class="step">
+              <div class="step-number">9</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el cuadro de búsqueda de la barra de navegación superior, escribe <code>bedrock</code>. En los resultados de la búsqueda, en la sección <strong>Servicios</strong>, haz clic en <a class="service-link" href="#">Amazon Bedrock</a>.
+              </div>
+            </div>
+            <div class="step-image-slot"><img src="./img/step10.png" alt="Region US-EAST-1" /></div>
+
+            <div class="step">
+              <div class="step-number">10</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el panel de navegación izquierdo, desplázate hacia abajo hasta <strong>"Build"</strong> y haz clic en <strong>"Agents"</strong>.
+              </div>
+            </div>
+            <div class="step-image-slot"><img src="./img/step11.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">11</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Haz clic en <span class="btn-pill">Create Agent</span>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">12</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la ventana emergente, coloca como nombre de agente <code>e-commerce-agent</code> y la siguiente descripción: <code>"Product recommendations agent"</code>. Haz clic en <span class="btn-pill">Create</span>.
+              </div>
+            </div>
+
+            <div class="step-image-slot"><img src="./img/step12.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">13</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Aparece la vista <strong>"Agent Builder"</strong>, donde configuraremos el modelo.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">14</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el apartado <strong>"Agent Resource Role"</strong>, selecciona <strong>"Use an existing service Role"</strong> y del desplegable selecciona el único valor disponible <code>workshop-IAMRolexxx</code>.
+              </div>
+            </div>
+            <div class="step-image-slot"><img src="./img/step13.png" alt="" /></div>
+
+
+            <div class="step">
+              <div class="step-number">15</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Haz clic en <span class="btn-pill">Select Model</span>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">16</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la ventana emergente, <strong>desmarca</strong> el check <em>"Bedrock Agents Optimized"</em> ubicado en la parte superior izquierda de dicha ventana emergente.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">17</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Selecciona <strong>Anthropic Claude Haiku 4.5</strong>. Asegúrate de que en el apartado <em>Inference</em> está seleccionado <code>US Anthropic Claude Haiku 4.5</code> y haz clic en <span class="btn-pill">Apply</span>.
+              </div>
+            </div>
+
+            <div class="step-image-slot"><img src="./img/step14.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">18</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el apartado <strong>Instructions for Agent</strong>, completa con lo siguiente:
+                <br/><br/>
+                <code>"You are a Product recommendations agent for gift products, the user is trying to buy a gift for someone and you are trying to help identify the best products based on the filters in the action groups, ask questions to identify at least one of the input filters, gender, category or ocassion. Do not recommend any products that are not retrieved from the products API. Do not ask about the gender if it is obvious from the user input already. Always start by getting the full list of products from the API so you can know the proper filter values to be used in the API parameters. Always use a single value for each filter field, and adthere to the filtration values based on the first API call. And never tell the user about the API and its details"</code>
+              </div>
+            </div>
+            <div class="warning-box">
+              <div class="info-title">⚠ Importante</div>
+                  Este conjunto de instrucciones son importantes ya que guían al Agente en cómo comunicarse con el Usuario y en cómo utilizar las APIs.
+            </div>
+
+            <div class="step-image-slot"><img src="./img/step15.png" alt="" /></div>
+
+
+            <div class="step">
+              <div class="step-number">19</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Haz clic en <strong>Additional Settings</strong> y en el apartado <strong>"User Input"</strong> selecciona la opción <strong>Enabled</strong>.
+              </div>
+            </div>
+
+          <div class="step-image-slot"><img src="./img/step16.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">20</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                ⚠️ <strong>Importante.</strong> Haz clic en <span class="btn-pill">Save</span> ubicado en la parte superior antes de continuar con el siguiente paso.
+              </div>
+            </div>
+          <div class="step-image-slot"><img src="./img/step17.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">21</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el apartado <strong>Action Groups</strong>, haz clic en <span class="btn-pill">Add</span> para añadir un Action Group que permitirá al Agente invocar la Lambda Function.
+              </div>
+            </div>
+          <div class="step-image-slot"><img src="./img/step18.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">22</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el <strong>Action Group name</strong>, coloca <code>get_product_recommendations</code> y selecciona <strong>Define with API Schemas</strong>.
+              </div>
+            </div>
+          <div class="step-image-slot"><img src="./img/step19.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">23</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el apartado <strong>Action Group Invocation</strong>, selecciona <strong>"Select an existing Lambda Function"</strong> y en el desplegable selecciona la Lambda que tiene el nombre <code>workshop-GetProductDetailsFunction</code>.
+              </div>
+            </div>
+
+          <div class="step-image-slot"><img src="./img/step20.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">24</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el apartado <strong>Action Group Schema</strong>, selecciona <strong>"Define via in-line schema editor"</strong>.
+              </div>
+            </div>
+
+            <div class="step-image-slot"><img src="./img/step21.png" alt="" /></div>
+
+            <!-- PASO 25 – CON BLOQUE DE CÓDIGO Y BOTÓN COPIAR -->
+            <div class="step">
+              <div class="step-number">25</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Borra el contenido de la sección <strong>In-line OpenAPI Schema</strong> y copia/pega el siguiente Schema:
+              </div>
+            </div>
+
+            <div class="code-block-wrap" id="schema-block-1">
+              <div class="code-block-header">
+                <span class="code-block-label">OpenAPI Schema – Get Product Recommendations</span>
+                <button class="copy-btn" onclick="copyCode('schema-1', this)" title="Copiar al portapapeles">
+                  <!-- Copy icon -->
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                  </svg>
+                  Copiar
+                </button>
+              </div>
+              <div class="code-block-body">
+                <pre id="schema-1">openapi: 3.0.0
+info:
+  title: Product Recommendations API
+  description: API for retrieving product recommendations based on filters
+  version: 1.0.0
+
+paths:
+  /products:
+    get:
+      summary: Retrieve Product Details
+      description: This API retrieves product Information. Filtering parameters are passed as query strings. If query strings are empty it performs a full scan
+      operationId: getProducts
+      parameters:
+        - name: product_name
+          in: query
+          description: Retrieve details for a specific product name
+          schema:
+            type: string
+        - name: category
+          in: query
+          description: Filters product by category
+          schema:
+            type: string
+        - name: gender
+          in: query
+          description: Filters product by gender
+          schema:
+            type: string
+        - name: occasion
+          in: query
+          required: false
+          description: Filters product by ocassion
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of recommended products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    product_name:
+                      type: string
+                    category:
+                      type: string
+                    gender:
+                      type: string
+                    product_description:
+                      type: string
+        '400':
+          description: Bad request - invalid parameters
+        '500':
+          description: Internal server error</pre>
+              </div>
+            </div>
+
+            <div class="step-image-slot"><img src="./img/step22.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">26</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Haz clic en <span class="btn-pill">Create</span>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">27</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Regresaras a la pantalla Agent Builder. Haz clic en <span class="btn-pill">Save And Exit</span>  ubicado en la parte superior
+              </div>
+            </div>
+
+            <div class="step-image-slot"><img src="./img/step23.png" alt="" /></div>
+
+          </div>
+        </section>
+
+        <hr class="section-divider"/>
+
+        <!-- ═══ TAREA 3 – PRUEBA EL AGENTE ═══ -->
+        <section class="task task-3" id="task3test">
+          <div class="task-header">
+            <div class="task-badge">3</div>
+            <h2 class="task-title">Tarea 3: Prueba el Agente</h2>
+          </div>
+          <div class="steps-list">
+
+            <div class="step">
+              <div class="step-number">28</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la pantalla donde ves los detalles del Agente, haz clic en <span class="btn-pill">Test</span>. En la parte derecha se despliega el Chat para probar el Agente. Verás un mensaje que indica <strong>"Prepare the agent to test the latest Changes".</strong>.Haz clic en Prepare <span class="btn-pill">Prepare</span>
+              </div>
+            </div>
+            <div class="step-image-slot"><img src="./img/step24.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">29</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Verás un mensaje en verde que indica<strong>"Agent: e-commerce was successfully prepared</strong>. En la parte inferior derecha, Introduce el siguiente texto: <code>Quiero comprar un regalo</code> y haz clic en <span class="btn-pill">Run</span>.
+              </div>
+            </div>
+            <div class="step-image-slot"><img src="./img/step25.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">30</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                El agente te contestará con un mensaje similar a <strong>¿Para quién es el regalo? ¿Es para una mujer, hombre, o alguien sin preferencia específica (unisex)?</strong>. Introduce el siguiente texto: <code>Es para mi hermana</code>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">31</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                El agente te contestará con un mensaje similar a <strong>¿Para qué ocasión es el regalo? Por ejemplo: cumpleaños, Día de la Madre, Día de San Valentín, boda, cita, fiesta, o simplemente un regalo para demostrar aprecio.</strong>. Introduce el siguiente texto: <code>Es para su cumpleaños</code>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">32</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                El agente te contestará con varias opciones. Estas opciones se han <strong>recuperado de la tabla de DynamoDB</strong>. Haz clic en <span class="btn-pill">Show Trace</span> y se desplegará del lado derecho una sección para ver las trazas.
+              </div>
+            </div>
+
+            <div class="step-image-slot"><img src="./img/step26.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">33</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Haz clic en la pestaña <strong>"Orchestration and Knowledge Base"</strong>. Ve el detalle de cada traza. En ellas podrás ver que realiza la llamada a la API para obtener los productos.
+              </div>
+            </div>
+
+            <div class="step-image-slot"><img src="./img/step27.png" alt="" /></div>
+
+          </div>
+        </section>
+
+        <hr class="section-divider"/>
+
+        <!-- ═══ TAREA 4 ═══ -->
+        <section class="task task-4" id="task4">
+          <div class="task-header">
+            <div class="task-badge">4</div>
+            <h2 class="task-title">Tarea 4: Añade más funcionalidades al Agente</h2>
+          </div>
+          <div class="steps-list">
+
+            <div class="step">
+              <div class="step-number">34</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Vamos a editar el Agente. En el panel de navegación izquierdo, desplázate hasta <strong>"Build"</strong> y haz clic en <strong>"Agents"</strong>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">35</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el apartado <strong>Agents</strong>, haz clic en el agente <code>e-commerce-agent</code>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">36</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                 Haz clic en <span class="btn-pill">Edit in Agent Builder</span> para volver a editar el agente.
+              </div>
+            </div>
+
+            <div class="step-image-slot"><img src="./img/step28.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">37</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el apartado de <strong>Instructions for the agent</strong>, añade el siguiente texto <strong>al final</strong> de las instrucciones existentes:
+                <br/><br/>
+                <code>"After recommending products ask the user if they want to add any products to the cart, then use the add to cart API, ask the user about his email and use it as the user id. Also use it along the whole conversation and in any cart API calls, reply to the user with the userId after first cart addition."</code>
+              </div>
+            </div>
+            <div class="step-image-slot"><img src="./img/step29.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">38</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                ⚠️ <strong>Importante.</strong> Haz clic en <span class="btn-pill">Save</span> ubicado en la parte superior antes de continuar con el siguiente paso.
+              </div>
+            </div>
+            <div class="step-image-slot"><img src="./img/step30.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">39</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el apartado <strong>Action Groups</strong>, haz clic en <span class="btn-pill">Add</span> para añadir un Action Group que permitirá al Agente invocar la Lambda Function.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">40</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el <strong>Action Group name</strong>, coloca <code>add_to_cart</code> y selecciona <strong>Define with API Schemas</strong>.
+              </div>
+            </div>
+            <div class="step-image-slot"><img src="./img/step31.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">41</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el apartado <strong>Action Group Invocation</strong>, selecciona <strong>"Select an existing Lambda Function"</strong> y en el desplegable selecciona la Lambda con el nombre <code>workshop-AddToCartFunction</code>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">42</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el apartado <strong>Action Group Schema</strong>, selecciona <strong>"Define via in-line schema editor"</strong>.
+              </div>
+            </div>
+
+            <div class="step-image-slot"><img src="./img/step32.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">43</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Borra el contenido de la sección <strong>In-line OpenAPI Schema</strong> y copia/pega el siguiente Schema:
+              </div>
+            </div>
+
+            <!-- BLOQUE DE CÓDIGO TAREA 4 -->
+            <div class="code-block-wrap" id="schema-block-2">
+              <div class="code-block-header">
+                <span class="code-block-label">OpenAPI Schema – Add to Cart</span>
+                <button class="copy-btn" onclick="copyCode('schema-2', this)" title="Copiar al portapapeles">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                  </svg>
+                  Copiar
+                </button>
+              </div>
+              <div class="code-block-body">
+                <pre id="schema-2">openapi: 3.0.0
+info:
+  title: Add To Cart API
+  description: This API add a product to a user's cart
+  version: 1.0.0
+paths:
+  /cart:
+    post:
+      summary: Add a product to the cart
+      description: Adds a specified product to the user's shopping cart
+      operationId: addToCart
+      parameters:
+        - name: userId
+          in: query
+          description: The id of the user
+          required: true
+          schema:
+            type: string
+        - name: productName
+          in: query
+          description: The name of the product to add to the cart
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product successfully added to cart
+          content:
+            application/json:
+              schema:
+                type: string
+        '400':
+          description: Bad request - missing required parameters
+        '500':
+          description: Internal server error</pre>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">44</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Haz clic en <span class="btn-pill">Create</span>.
+              </div>
+            </div>
+            
+            <div class="step-image-slot"><img src="./img/step33.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">45</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Regresaras a la pantalla Agent Builder. Haz clic en <span class="btn-pill">Save And Exit</span>  ubicado en la parte superior
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">46</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la pantalla donde ves los detalles del Agente, haz clic en <span class="btn-pill">Test</span>. En la parte derecha se despliega el Chat para probar el Agente. Verás un mensaje que indica <strong>"Prepare the agent to test the latest Changes".</strong>.Haz clic en Prepare <span class="btn-pill">Prepare</span>
+              </div>
+            </div>
+          <div class="step-image-slot"><img src="./img/step34.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">47</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Introduce el siguiente texto: <code>Quiero comprar un perfume para el cumpleaños de mi madre</code> y haz clic en <span class="btn-pill">Run</span>.
+              </div>
+            </div>
+          <div class="step-image-slot"><img src="./img/step35.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">48</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                El agente te contestará con tres opciones de perfume. Introduce el siguiente texto: <code>Selecciono el primero</code> y haz clic en <span class="btn-pill">Run</span>.
+              </div>
+            </div>
+          <div class="step-image-slot"><img src="./img/step36.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">49</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                El agente te preguntará tu email para añadirlo al carrito. Introduce un email de prueba como por ejemplo: <code>cliente1@amazon.com</code> y haz clic en <span class="btn-pill">Run</span>.
+              </div>
+            </div>
+
+
+            <div class="step">
+              <div class="step-number">50</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Verás que el agente ha añadido el producto al carrito. 
+              </div>
+            </div>
+          <div class="step-image-slot"><img src="./img/step37.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">51</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Para comprobarlo, en la barra de búsqueda de servicios introduce <a class="service-link" href="#">DynamoDB</a> y haz clic en el servicio.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">52</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En la consola de DynamoDB, haz clic en <strong>Tables</strong> en el menú izquierdo y a continuación haz clic en la tabla con nombre <code>workshop-Cart-XXX</code>.
+              </div>
+            </div>
+          <div class="step-image-slot"><img src="./img/step38.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">53</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Una vez se carguen los detalles de la tabla, haz clic en <span class="btn-pill">Explore Table Items</span>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">54</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Asegúrate de que está seleccionada la opción <strong>Scan</strong> en el apartado <em>Scan or query Items</em> y a continuación haz clic en <span class="btn-pill">Run</span>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">55</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el apartado inferior podrás ver todos los elementos de la tabla donde estará el carrito con el pedido que incluye el regalo.
+              </div>
+            </div>
+
+            <div class="step-image-slot"><img src="./img/step39.png" alt="" /></div>
+
+            <div class="step">
+              <div class="step-number">56</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el apartado inferior podrás ver todos los elementos de la tabla donde estará el carrito con el pedido que incluye el regalo.
+              </div>
+            </div>
+
+            <div class="step-image-slot"><img src="./img/step39.png" alt="" /></div>
+            <div class="step">
+              <div class="step-number">57</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Regresa para volver a probar el Agente. En el cuadro de búsqueda de la barra de navegación superior, escribe <code>bedrock</code>. En los resultados de la búsqueda, en la sección <strong>Servicios</strong>, haz clic en <a class="service-link" href="#">Amazon Bedrock</a>.
+              </div>
+            </div>
+            <div class="step-image-slot"><img src="./img/step10.png" alt="Region US-EAST-1" /></div>
+           
+            <div class="step">
+              <div class="step-number">58</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el panel de navegación izquierdo, desplázate hasta <strong>"Build"</strong> y haz clic en <strong>"Agents"</strong>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">59</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                En el apartado <strong>Agents</strong>, haz clic en el agente <code>e-commerce-agent</code>.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">60</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Haz clic en <strong>Test</strong> si no ves la interfaz del chat de la parte derecha e  introduce el siguiente texto<code>¿Que tengo en mi carrito? Mi usuario es cliente1@amazon.com</code>.
+              </div>
+            </div>
+            <div class="step-image-slot"><img src="./img/step40.png" alt="" /></div>
+          
+            <div class="step">
+              <div class="step-number">61</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                El agente te contestará <strong> No tengo acceso a una función que me permita revisar el contenido actual de tu carrito de compras. </strong>. Deberás solventar el problema en el siguiente paso. 
+              </div>
+            </div>
+            <div class="step-image-slot"><img src="./img/step41.png" alt="" /></div>
+
+          </div>
+        </section>
+
+        <hr class="section-divider"/>
+
+        <!-- ═══ CHALLENGE ═══ -->
+        <section class="task task-challenge" id="challenge">
+          <div class="task-header">
+            <div class="task-badge">🏆</div>
+            <h2 class="task-title">Challenge: Completa las funcionalidades al Agente</h2>
+          </div>
+          <div class="steps-list">
+
+            <div class="info-box">
+              <div class="info-title">ℹ️ Información</div>
+              Nuestro Agente está incompleto. Es necesario que si el usuario pregunta <strong>"¿Qué tengo en el carrito?"</strong> el agente pueda responder. Para ello, realiza las siguientes tareas. <strong>Si tienes dudas, pregunta al instructor.</strong>
+            </div>
+
+            <div class="step">
+              <div class="step-number">62</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                <strong>Modifica las instrucciones del Agente</strong> para que sepa que puede obtener el estado del carrito si el usuario lo pregunta.
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">63</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Utiliza la función Lambda <code>workshop-getCartFunction</code> para obtener el estado del carrito. Añade un nuevo <strong>Action Group</strong> con su correspondiente <strong>OpenAPI Schema</strong>. Si lo necesitas, el esquema se encuentra abajo del todo de esta página (después de Conclusiones)
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-number">64</div>
+              <div class="step-check" onclick="toggleCheck(this)"></div>
+              <div class="step-body">
+                Si has realizado todos los cambios necesarios, prueba el agente con el siguiente diálogo:
+                <br/><br/>
+                <strong>Usuario:</strong> <code>Quiero un regalo para el cumpleaños de mi padre.</code><br/>
+                <strong>Agente:</strong> Tengo estas opciones…<br/>
+                <strong>Usuario:</strong> <code>OK, me quedo con la primera opción, añádela al carrito, mi usuario es usuario2@amazon.com</code><br/>
+                <strong>Agente:</strong> Añadida al carrito<br/>
+                <strong>Usuario:</strong> <code>Ahora quiero un regalo para el cumpleaños de mi abuela.</code><br/>
+                <strong>Usuario:</strong> <code>OK, me quedo con la primera opción, añádela al carrito</code><br/>
+                <strong>Agente:</strong> Añadida al carrito<br/>
+                <br/>
+                Elimina la sesion con el agente. haciendo clic en el icono localizado en la parte superior del chat
+                <br/>
+                <div class="step-image-slot"><img src="./img/step42.png" alt="" /></div>
+                <br/>
+                Vuelve a empezar un chat:<br/>
+                <strong>Usuario:</strong> <code>Muéstrame qué tengo en el carrito mi usuario es usuario2@amazon.com</code><br/>
+                <strong>Agente:</strong> Este es el contenido del carrito…
+              </div>
+            </div>
+
+            <div class="step-image-slot"><img src="./img/step43.png" alt="" /></div>
+
+            <div class="success-box">
+              ✅ <strong>¡Felicidades!</strong> Has completado el challenge y el agente ahora es capaz de mostrar el contenido del carrito al usuario.
+            </div>
+
+          </div>
+        </section>
+
+        <hr class="section-divider"/>
+
+        <!-- ═══ CONCLUSIÓN ═══ -->
+        <section class="conclusion" id="conclusion">
+          <div class="conclusion-title">
+            🎓 Conclusiones
+          </div>
+          <p>
+            En este laboratorio, has aprendido a <strong>crear un Agente en Amazon Bedrock</strong>.
+            Conectaste el agente con funciones Lambda mediante <strong>Action Groups</strong> y esquemas OpenAPI,
+            integraste un catálogo de productos en <strong>DynamoDB</strong> y construiste un flujo conversacional
+            completo que incluye recomendaciones personalizadas de regalos y gestión de un carrito de compra.
+          </p>
+        </section>
+        <hr class="section-divider"/>
+       <section class="task task-1" id="appendix">
+          <div class="task-header">
+            <h2 class="task-title">Apéndice</h2>
+          </div>
+            <div class="step">
+              <div class="step-body">
+                Este es el texto para añadir en las instrucciones del agente <code>The user can ask about the items in the cart at any time. Use the get Cart API to answer that</code>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-body">
+                Este es el Schema para la funcion lambda <code>workshop-getCartFunction</code>
+              </div>
+            </div>
+
+
+            <div class="code-block-wrap" id="schema-block-2">
+              <div class="code-block-header">
+                <span class="code-block-label">OpenAPI Schema – Get Cart</span>
+                <button class="copy-btn" onclick="copyCode('schema-3', this)" title="Copiar al portapapeles">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                  </svg>
+                  Copiar
+                </button>
+              </div>
+              <div class="code-block-body">
+                <pre id="schema-3">openapi: 3.0.0
+info:
+  title: Get Cart API
+  description: This API retrieves the items in a user's cart
+  version: 1.0.0
+paths:
+  /cart:
+    post:
+      summary: Get the user's cart
+      description: Retrieves the list of products in the user's cart
+      operationId: getCart
+      parameters:
+        - name: userId
+          in: query
+          description: The id of the user
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product successfully added to cart
+          content:
+            application/json:
+              schema:
+                type: string
+        '400':
+          description: Bad request - missing required parameters
+        '500':
+          description: Internal server error</pre>
+              </div>
+            </div>
+
+
+
+       </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // ── Checkbox progress tracking ──────────────────────────────
+    const TOTAL_STEPS = 56;
+
+    function toggleCheck(el) {
+      el.classList.toggle('checked');
+      const checked = document.querySelectorAll('.step-check.checked').length;
+      const pct = Math.round((checked / TOTAL_STEPS) * 100);
+      document.getElementById('progress-fill').style.width = pct + '%';
+      document.getElementById('progress-pct').textContent = pct + '%';
+    }
+
+    // ── Copy to clipboard ───────────────────────────────────────
+    function copyCode(id, btn) {
+      const pre = document.getElementById(id);
+      if (!pre) return;
+      const text = pre.textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const original = btn.innerHTML;
+        btn.classList.add('copied');
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copiado`;
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          btn.innerHTML = original;
+        }, 2000);
+      }).catch(() => {
+        // Fallback para navegadores sin clipboard API
+        const range = document.createRange();
+        range.selectNode(pre);
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(range);
+        document.execCommand('copy');
+        window.getSelection().removeAllRanges();
+        btn.textContent = '✓ Copiado';
+        setTimeout(() => {
+          btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copiar`;
+        }, 2000);
+      });
+    }
+
+    // ── Sidebar active link on scroll ───────────────────────────
+    const sections = document.querySelectorAll('section[id], div[id]');
+    const navLinks = document.querySelectorAll('.nav-link');
+
+    window.addEventListener('scroll', () => {
+      let current = '';
+      sections.forEach(sec => {
+        if (sec.getBoundingClientRect().top < 160) current = sec.id;
+      });
+      navLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + current) link.classList.add('active');
+      });
+    });
+  </script>
+
+</body>
+</html>

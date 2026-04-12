@@ -1,0 +1,141 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Stack OpenSearch Serverless - Crea la colección "bedrock-knowledge-base"
+  y el índice vectorial "bedrock-knowledge-base-index" con su campo vector
+  y los metadatos requeridos por Bedrock.
+
+Parameters:
+  DeveloperUserArn:
+    Type: String
+    Description: ARN del usuario IAM developer (para las políticas de acceso de AOSS)
+
+Resources:
+
+  # ── 1. Política de cifrado ──────────────────────────────────────────────────
+  EncryptionPolicy:
+    Type: AWS::OpenSearchServerless::SecurityPolicy
+    Properties:
+      Name: bedrock-kb-encryption
+      Type: encryption
+      Description: Política de cifrado SSE para la colección bedrock-knowledge-base
+      Policy: |
+        {
+          "Rules": [
+            {
+              "ResourceType": "collection",
+              "Resource": ["collection/bedrock-knowledge-base"]
+            }
+          ],
+          "AWSOwnedKey": true
+        }
+
+  # ── 2. Política de red (acceso público a la API y al dashboard) ────────────
+  NetworkPolicy:
+    Type: AWS::OpenSearchServerless::SecurityPolicy
+    Properties:
+      Name: bedrock-kb-network
+      Type: network
+      Description: Política de red para la colección bedrock-knowledge-base
+      Policy: |
+        [
+          {
+            "Rules": [
+              {
+                "ResourceType": "collection",
+                "Resource": ["collection/bedrock-knowledge-base"]
+              },
+              {
+                "ResourceType": "dashboard",
+                "Resource": ["collection/bedrock-knowledge-base"]
+              }
+            ],
+            "AllowFromPublic": true
+          }
+        ]
+
+  # ── 3. Colección OpenSearch Serverless ─────────────────────────────────────
+  BedrockKnowledgeBaseCollection:
+    Type: AWS::OpenSearchServerless::Collection
+    DependsOn:
+      - EncryptionPolicy
+      - NetworkPolicy
+    Properties:
+      Name: bedrock-knowledge-base
+      Type: VECTORSEARCH
+      Description: Colección vectorial para la Knowledge Base de Amazon Bedrock
+      Tags:
+        - Key: Project
+          Value: IteraBedrockWorkshop
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # ── 4. Política de acceso a datos ──────────────────────────────────────────
+  #    Necesaria para que el usuario developer y el servicio Bedrock puedan
+  #    crear/leer/escribir índices y documentos en la colección.
+  DataAccessPolicy:
+    Type: AWS::OpenSearchServerless::AccessPolicy
+    DependsOn: BedrockKnowledgeBaseCollection
+    Properties:
+      Name: bedrock-kb-access
+      Type: data
+      Description: Política de acceso a datos para la colección bedrock-knowledge-base
+      Policy: !Sub |
+        [
+          {
+            "Description": "Acceso completo para el usuario developer y Bedrock",
+            "Rules": [
+              {
+                "ResourceType": "index",
+                "Resource": [
+                  "index/bedrock-knowledge-base/*"                
+                  ],
+                "Permission": [
+                  "aoss:CreateIndex",
+                  "aoss:UpdateIndex",
+                  "aoss:DeleteIndex",
+                  "aoss:ReadDocument",
+                  "aoss:WriteDocument"
+                ]
+              },
+              {
+                "ResourceType": "collection",
+                "Resource": ["collection/bedrock-knowledge-base"],
+                "Permission": [
+                  "aoss:CreateCollectionItems",
+                  "aoss:UpdateCollectionItems",
+                  "aoss:DeleteCollectionItems",
+                  "aoss:DescribeCollectionItems"
+                ]
+              }
+            ],
+            "Principal": [
+              "${DeveloperUserArn}",
+              "arn:aws:iam::${AWS::AccountId}:root"
+            ]
+          }
+        ]
+
+Outputs:
+  CollectionId:
+    Description: ID de la colección OpenSearch Serverless
+    Value: !Ref BedrockKnowledgeBaseCollection
+    Export:
+      Name: !Sub '${AWS::StackName}-CollectionId'
+
+  CollectionArn:
+    Description: ARN de la colección OpenSearch Serverless
+    Value: !GetAtt BedrockKnowledgeBaseCollection.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-CollectionArn'
+
+  CollectionEndpoint:
+    Description: Endpoint de la colección OpenSearch Serverless
+    Value: !GetAtt BedrockKnowledgeBaseCollection.CollectionEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-CollectionEndpoint'
+
+  IndexName:
+    Description: Nombre del índice vectorial creado
+    Value: bedrock-knowledge-base-index
+    Export:
+      Name: !Sub '${AWS::StackName}-IndexName'
