@@ -1,0 +1,489 @@
+.stknavdesign2022desktop {
+  height: 100px;
+}
+.stknavdesign2022desktop,
+.stknavdesign2022mobile{
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px); 
+}
+.stknavdesign2022desktop.nolang .search_container .search_img img,
+.stknavdesign2022mobile.nolang .search_container .search_img img{
+  margin: 0; 
+}
+/*.stknavdesign2022desktop.menuestado1{
+height: 100px !important; 
+}
+.stknavdesign2022desktop.menuestado2{
+height: 40px !important;
+}*/
+.logo_container img{
+  width: 125px;
+}
+.logoexpanded img{
+  margin-top: 20px !important;
+}
+
+.secondary_menu_container .hs-menu-wrapper.hs-menu-flow-horizontal>ul{
+  display: block;
+  margin: 0;
+  padding: 3px 0 0 0;
+  list-style: none;
+}
+.secondary_menu_container .hs-menu-wrapper.hs-menu-flow-horizontal>ul li,
+.secondary_menu_container .hs-menu-wrapper.hs-menu-flow-horizontal>ul li a{
+  font-size: 14px !important; /* important to override Softtek_Custom_Style */
+  float: left;
+  line-height: 1.33;
+  max-width: none;
+  margin: 0 !important;
+}
+.secondary_menu_container .hs-menu-wrapper.hs-menu-flow-horizontal>ul li a, 
+.secondary_menu_container .hs-menu-wrapper.hs-menu-flow-horizontal>ul li a:link, 
+.secondary_menu_container .hs-menu-wrapper.hs-menu-flow-horizontal>ul li a:hover, 
+.secondary_menu_container .hs-menu-wrapper.hs-menu-flow-horizontal>ul li a:active, 
+.secondary_menu_container .hs-menu-wrapper.hs-menu-flow-horizontal>ul li a:visited{
+  color: #ffffff;
+  background-color: transparent;
+  padding: 0 13px;
+  font-weight: 300;
+  text-overflow: clip !important; 
+}
+.secondary_menu_container .hs-menu-wrapper.hs-menu-flow-horizontal>ul li:last-child a{
+  padding-right: 0 !important;
+}
+.secondary_menu_container .hs-menu-wrapper.hs-menu-flow-horizontal>ul li:not(:first-child){
+  background-image: url("https://www.softtek.com/hubfs/Softtek/images/assets/secondarymenupipeline.png");
+  background-position: left center;
+  background-repeat: no-repeat;
+}
+.RemovePipeline{
+  background-image: none !important;
+}
+/*Primary meny */
+.menuestado2 .primary_menu_lang_container{
+  padding-top: 7px; 
+}
+.primary_menu_lang_container .hs-menu-wrapper.hs-menu-flow-horizontal>ul li{
+  float: left; 
+}
+.primary_menu_lang_container .primary_parent_item span{
+  color: #ffffff;
+  background-color: transparent;
+  padding: 3px 15px;
+  font-weight: 300;
+  text-shadow: none;
+  font-size: 16px;
+  display: block;
+  cursor: pointer;
+  line-height: 1.33;
+}
+.primary_menu_lang_container .primary_parent_item .primary_menu_anchor a{
+  color: #FFF;
+  background-color: transparent;
+  font-weight: 300;
+  text-shadow: none;
+  font-size: 16px;
+  display: block;
+  cursor: pointer;  
+}
+.primary_menu_lang_container .primary_parent_item .primary_menu_anchor a:hover,
+.stknavdesign2022mobile .mobilerowMenuItems .primary_menu_anchor{
+  color: #00cebe;
+}
+.lang_menu{
+  text-align: right;
+}
+.hubspot_container_search input, 
+.hubspot_container_search input[type="text"],
+.hubspot_container_search input[type="text"]:focus{
+  margin-bottom: 0; 
+  background-color: transparent;
+  border: 0;
+  color: #FFF;
+  box-shadow: none;
+  border-bottom: solid 1px rgba(255,255,255,.5);
+  border-radius: 0;
+  padding: 4px 0;
+  max-width: 507px;
+  width: 100%;
+}
+.mobile_search .hubspot_container_search input, 
+.mobile_search .hubspot_container_search input[type="text"],
+.mobile_search .hubspot_container_search input[type="text"]:focus{
+  max-width: none !important; 
+}
+.mobile_search .hubspot_container_search .container{
+  margin: 0 !important; 
+}
+
+
+.primary_parent_item{
+  float: left; 
+}
+.parent_container,
+.children_container{
+  width: 100%;
+}
+.children_container{
+  width: 100%;
+  position: relative;
+}
+/* menus */
+.primary_children_item_container{
+  text-align: right;
+  color: #FFF;
+  display: none;
+}
+.children_special_parent{
+  font-size: 16px;
+  color: #FFF;
+  padding: 7px 0;
+  font-weight: 500;
+  cursor: pointer;
+  text-transform: uppercase;
+  cursor: auto;
+}
+.children_special_parent.menu_special_parent_icon{
+  cursor: pointer !important; 
+}
+.children_item_level4 a,
+.children_item_level4 a:link,
+.children_item_level3 a,
+.children_item_level3 a:link{
+  color: #fff !important;
+  font-size: 16px;
+  font-weight: 300;
+  display: block;
+  padding: 5px 0 3px 0;
+  line-height: 1.33;
+}
+.menuitem_container_col{
+  position: relative;
+  margin-top: 25px;
+}
+.menuitem_col{
+  width: 300px;
+  position: absolute;
+  top: 0;
+  padding: 0px 0 0 15px;
+  box-sizing: border-box;
+}
+/* posicionamiento columnas Desktop 
+Si se desea ser mas especifico por si en el futuro se hay mas columnas en los menus aqui se agregarian sus posicionamientos
+.primary_children_item_container [data-menu='NOMBRE_DE_LA_INDUSTRIA'] .menuitem_col.totalcoln{
+
+}
+Agregar Variantes de Idioma, si es asi.
+
+OJO: PARA LOS CASOS DE 3 COLUMNAS ESTOY ELIMINANDO EL POSITION ABSOLUTE DE LA COLUMNA, PARA REMPLAZARLO POR COLUMNAS FLOTANTES A LA IZQ CON 33% DE WIDTH
+Por lo tanto ya no se necesita el media query
+*/
+/* Services And Solutions  and industries 2023 */
+.menuitem_col.totalcol3{
+  width: 33.3333%;
+  position: static;
+  float: left;
+}
+.menuitem_col.totalcol3 .children_item_level3{
+  width: 300px;
+  float: right;
+}
+
+/*.primary_children_item_container[data-menu="TRANSCEND"] .menuitem_col.col1{
+width: 100%;
+}*/
+
+@media(min-width: 1200px){
+  .primary_children_item_container[data-menu="AI"] .menuitem_col.col1{
+    left: 15%; 
+  }
+  .primary_children_item_container[data-menu="TRANSCEND"] .menuitem_col.col1{
+    left: 66%; 
+  }
+  .stknavdesign2022desktop[data-language="en"] .primary_children_item_container[data-menu="APPROACH"] .menuitem_col.totalcol1.col1,
+  .stknavdesign2022desktop[data-language="en-gb"] .primary_children_item_container[data-menu="APPROACH"] .menuitem_col.totalcol1.col1{
+    left: 25.6%;
+  }
+  .stknavdesign2022desktop[data-language="zh"] .primary_children_item_container[data-menu="方法"] .menuitem_col.totalcol1.col1 {
+    left: 46.8%; 
+  }
+  .primary_children_item_container[data-menu="ENFOQUE"] .menuitem_col.totalcol1.col1{
+    left: 24%;
+  }
+  .stknavdesign2022desktop[data-language="pt"] .primary_children_item_container[data-menu="APPROACH"] .menuitem_col.totalcol1.col1{
+    left: 23%;
+  }    
+  /*.primary_children_item_container[data-menu="INDUSTRIES"] .menuitem_col.totalcol2.col1{
+  left: 5.5%;
+}  
+  .primary_children_item_container[data-menu="INDUSTRIES"] .menuitem_col.totalcol2.col2{
+  left: 33.1%;
+}*/
+  /*.primary_children_item_container[data-menu="INDUSTRIAS"] .menuitem_col.totalcol2.col1{
+  left: 4%;
+}  
+  .primary_children_item_container[data-menu="INDUSTRIAS"] .menuitem_col.totalcol2.col2{
+  left: 32%;
+}*/
+  /*.primary_children_item_container[data-menu="INDÚSTRIA"] .menuitem_col.totalcol2.col1{
+  left: 6%;
+}  
+  .primary_children_item_container[data-menu="INDÚSTRIA"] .menuitem_col.totalcol2.col2{
+  left: 34%;
+}*/
+  .primary_children_item_container[data-menu="行业"] .menuitem_col.totalcol2.col1{
+    left: 25%;
+  }  
+  .primary_children_item_container[data-menu="行业"] .menuitem_col.totalcol2.col2{
+    left: 53%;
+  }
+  /*.menuitem_col.totalcol3.col1{
+  left: 15%;
+}  
+  .menuitem_col.totalcol3.col2{
+  left: 43%;
+} 
+  .menuitem_col.totalcol3.col3{
+  left: 70.6%;
+}  */
+}
+@media(max-width: 1199px) and (min-width: 980px){
+  .primary_children_item_container[data-menu="AI"] .menuitem_col.col1{
+    left: 7%; 
+  }
+  .primary_children_item_container[data-menu="TRANSCEND"] .menuitem_col.col1{
+    left: 61%; 
+  }  
+  .stknavdesign2022desktop[data-language="en"] .primary_children_item_container[data-menu="APPROACH"] .menuitem_col.totalcol1.col1,
+  .stknavdesign2022desktop[data-language="en-gb"] .primary_children_item_container[data-menu="APPROACH"] .menuitem_col.totalcol1.col1{
+    left: 18%;
+  }
+  .stknavdesign2022desktop[data-language="zh"] .primary_children_item_container[data-menu="方法"] .menuitem_col.totalcol1.col1 {
+    left: 39%; 
+  }
+  .primary_children_item_container[data-menu="ENFOQUE"] .menuitem_col.totalcol1.col1{
+    left: 16%;
+  }    
+  .stknavdesign2022desktop[data-language="pt"] .primary_children_item_container[data-menu="APPROACH"] .menuitem_col.totalcol1.col1{
+    left: 11%;
+  }  
+  /*.primary_children_item_container[data-menu="INDUSTRIES"] .menuitem_col.totalcol2.col1{
+  left: -9%;
+}  
+  .primary_children_item_container[data-menu="INDUSTRIES"] .menuitem_col.totalcol2.col2{
+  left: 23.3%;*/
+} 
+
+/*.primary_children_item_container[data-menu="INDUSTRIAS"] .menuitem_col.totalcol2.col1{
+left: -10%;
+}  
+.primary_children_item_container[data-menu="INDUSTRIAS"] .menuitem_col.totalcol2.col2{
+left: 21.7%;
+}   */
+
+/*.primary_children_item_container[data-menu="INDÚSTRIA"] .menuitem_col.totalcol2.col1{
+left: -8%;
+}  
+.primary_children_item_container[data-menu="INDÚSTRIA"] .menuitem_col.totalcol2.col2{
+left: 24%;
+} */
+.primary_children_item_container[data-menu="行业"] .menuitem_col.totalcol2.col1{
+  left: 14%;
+}  
+.primary_children_item_container[data-menu="行业"] .menuitem_col.totalcol2.col2{
+  left: 46%;
+}   
+
+/*.menuitem_col.totalcol3.col1{
+left: 2.5%;
+}  
+.menuitem_col.totalcol3.col2{
+left: 34.5%;
+} */
+.menuitem_col.totalcol3.col3{
+  left: 66.5%;
+}    
+}
+.menu_special_parent_icon{
+  -webkit-touch-callout: none; /* iOS Safari */
+  -webkit-user-select: none; /* Safari */
+  -khtml-user-select: none; /* Konqueror HTML */
+  -moz-user-select: none; /* Old versions of Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+  user-select: none; /* Non-prefixed version, currently
+  supported by Chrome, Edge, Opera and Firefox */
+}
+.menu_special_parent_icon:after {
+  content: ' \002B';
+  font-size: 36px;
+  line-height: 10px;
+  font-weight: 200;
+  margin-top: -10px;
+  display: inline-block;
+  vertical-align: middle;
+}
+.menu_special_parent_icon.xclose:after {
+  content: ' \2573';
+  font-size: 10px;
+  width: 17px;
+  text-align: center;  
+  font-weight: 600;
+  margin-top: -4px;
+}
+
+/* logos css */
+html body .logocollapsed img{
+  margin: 0;
+  width: 90px;
+}
+/*, 
+.menuestado2 .secondary_menu_container*/
+.menuestado2 .logocollapsed{
+  padding-top: 8px; 
+  display: block;
+}
+
+
+/* mobile */
+.stknavdesign2022mobile {
+  position: fixed !important;
+  top: 0;
+  background-image: url(https://www2.softtek.com/hubfs/Softtek/images/backstknavdesign2015.png);
+  width: 100%;
+  overflow: visible !important;
+  z-index: 10 !important;
+
+}
+.stknavdesign2022mobile .is-active .hamburger-inner:before{
+  top: 0 !important;
+}
+.stknavdesign2022mobile.menuAbierto{
+  padding-bottom: 25px;
+}
+.stknavdesign2022mobile .logoexpanded img{
+  width: 100px !important;
+  margin-top: 20px;
+}
+.stknavdesign2022mobile .menu_global_burger{
+  float: right;
+  padding:  20px 0 20px 20px;
+  box-sizing: border-box;
+  margin-right: -7px;
+}
+.stknavdesign2022mobile .menu_global_burger .hamburger{
+  padding: 0 !important;
+}
+.stknavdesign2022mobile .menu_global_burger .hamburger .hamburger-box{
+  width: 40px !important;
+  height: 24px !important;
+}
+.stknavdesign2022mobile .hamburger-inner, 
+.stknavdesign2022mobile .hamburger-inner:after, 
+.stknavdesign2022mobile .hamburger-inner:before{
+  background-color: #FFF;
+  height: 2.5px !important;
+  width: 35px !important;
+}
+.stknavdesign2022mobile .hamburger.is-active .hamburger-inner, 
+.stknavdesign2022mobile .hamburger.is-active .hamburger-inner:after, 
+.stknavdesign2022mobile .hamburger.is-active .hamburger-inner:before{
+  background-color: #FFF;
+}
+.stknavdesign2022mobile .hamburger--collapse .hamburger-inner:after{
+  top: -17px !important;
+}
+.stknavdesign2022mobile .hamburger-inner:before{
+  top: -8px !important;
+}
+/* mobile primary menu */
+.stknavdesign2022mobile .mobilerowMenuItems .primary_menu_label,
+.stknavdesign2022mobile .mobilerowMenuItems .primary_menu_label.level3 a,
+.stknavdesign2022mobile .mobilerowMenuItems .primary_menu_label.level4 a{
+  color: #FFF; 
+  cursor: pointer;
+}
+.stknavdesign2022mobile .mobilerowMenuItems .primary_menu_label.level1{
+  font-weight: 400;
+  font-size: 20px;
+  padding: 5px 0 !important;
+  box-sizing: border-box;
+}
+.stknavdesign2022mobile .mobilerowMenuItems .primary_menu_label.level1 a{
+  color: #FFF;
+  font-weight: 400;
+  font-size: 20px;
+  box-sizing: border-box;
+}
+
+.stknavdesign2022mobile .container_level3{
+  box-sizing: border-box;
+  padding: 3px 0px 10px 0;
+}
+/* Adding translates */
+.stknavdesign2022mobile .mobilerowMenuItems .container_level1[data-parent="SERVICES & SOLUTIONS"] .primary_menu_label.level3,
+.stknavdesign2022mobile .mobilerowMenuItems .container_level1[data-parent="SERVICIOS Y SOLUCIONES"] .primary_menu_label.level3{
+  font-weight: 300;
+  font-size: 16px;
+  padding: 5px 0;
+  box-sizing: border-box; 
+}
+.stknavdesign2022mobile .mobilerowMenuItems .primary_menu_label.level3,
+.stknavdesign2022mobile .mobilerowMenuItems .primary_menu_label.level3 a{
+  font-weight: 300;
+  font-size: 16px;
+  padding: 4px 0;
+  box-sizing: border-box;
+}
+.stknavdesign2022mobile .mobilerowMenuItems .primary_menu_label.level4 a{
+  font-weight: 300;
+  font-size: 14px;
+  padding: 4px 20px 4px 0px;
+  box-sizing: border-box; 
+  display: block;
+}
+.stknavdesign2022mobile .mobilerowMenuItems .mobile_item_primary_menu{
+  text-align: right;
+}
+.stknavdesign2022mobile .mobilerowMenuItems.rowactivado{
+  display: block; 
+}
+.stknavdesign2022mobile .container_level1,
+.stknavdesign2022mobile .container_level3{
+  display: none; 
+}
+.stknavdesign2022mobile .primary_menu_label.mobile_children_special_parent.level3:after {
+  content: ' \002B';
+  font-size: 40px;
+  line-height: 10px;
+  font-weight: 200;
+  margin-top: -3px;
+  display: inline-block;
+  vertical-align: middle;
+}
+.stknavdesign2022mobile .primary_menu_label.mobile_children_special_parent.level3.xclose:after {
+  content: ' \2573';
+  font-size: 10px;
+  width: 17px;
+  font-weight: 600;
+  text-align: center;  
+}
+.stknavdesign2022mobile .mobile_item_secondary_menu{
+  text-align: right; 
+}
+.stknavdesign2022mobile .mobile_item_secondary_menu a{
+  color: #FFF;
+  font-size: 18px;
+  font-weight: 300;
+  display: block;
+  padding: 5px 0;
+  box-sizing: border-box;  
+}
+.lang_search_container .search_img img.SearchActivado{
+  width: 17.8px;
+  content:url("https://www.softtek.com/hubfs/Softtek/images/assets/drive/Softtek.com_Search-MG.svg");
+}
+
+.img_lang_cont.LenguajeActivado img{
+  width: 18px;
+  content:url("https://www.softtek.com/hubfs/Softtek/images/assets/drive/Softtek.com_Language-MG.svg");  
+}
